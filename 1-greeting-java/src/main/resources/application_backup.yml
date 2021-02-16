@@ -1,0 +1,28 @@
+### HTTP without encryption in transit
+#server:
+#  port: 9090
+
+### Incomplete One-way TLS config
+#server:
+#  port: 9443
+#  ssl:
+#    enabled: true
+
+### One-way TLS
+#server:
+#  port: 9443
+#  ssl:
+#    enabled: true
+#    key-store: classpath:identity.jks
+#    key-password: secret
+#    key-store-password: secret
+
+### Two-way TLS
+server:
+  port: 9443
+  ssl:
+    enabled: true
+    key-store: classpath:identity.jks
+    key-password: secret
+    key-store-password: secret
+    client-auth: need

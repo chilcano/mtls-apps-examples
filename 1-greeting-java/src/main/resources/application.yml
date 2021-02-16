@@ -1,0 +1,7 @@
+server:
+  port: 9443
+  ssl:
+    enabled: true
+    key-store: classpath:identity.jks
+    key-password: secret
+    key-store-password: secret
