@@ -28,7 +28,6 @@ openssl genrsa -aes256 -passout pass:$2 -out 1_root/private/ca.key.pem 4096
 
 chmod 444 1_root/private/ca.key.pem
 
-
 echo 
 echo Generate the root certificate
 echo ---
@@ -36,11 +35,11 @@ mkdir -p 1_root/certs
 mkdir -p 1_root/newcerts
 touch 1_root/index.txt
 echo "100212" > 1_root/serial
-openssl req -config openssl.cnf \
+openssl req -config openssl_root.cnf \
       -key 1_root/private/ca.key.pem \
       -passin pass:$2 \
       -new -x509 -days 7300 -sha256 -extensions v3_ca \
-      -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$1" \
+      -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
       -out 1_root/certs/ca.cert.pem
 
 
@@ -64,9 +63,9 @@ echo
 echo Generate the signing request for the intermediary certificate
 echo ---
 mkdir -p 2_intermediate/csr
-openssl req -config openssl.cnf -new -sha256 \
+openssl req -config openssl_root.cnf -new -sha256 \
       -passin pass:$2 \
-      -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$1" \
+      -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
       -key 2_intermediate/private/intermediate.key.pem \
       -out 2_intermediate/csr/intermediate.csr.pem
 
@@ -78,7 +77,7 @@ mkdir -p 2_intermediate/certs
 mkdir -p 2_intermediate/newcerts
 touch 2_intermediate/index.txt
 echo "100212" > 2_intermediate/serial
-openssl ca -config openssl.cnf -extensions v3_intermediate_ca \
+openssl ca -config openssl_root.cnf -extensions v3_intermediate_ca \
         -passin pass:$2 \
         -days 3650 -notext -md sha256 \
         -in 2_intermediate/csr/intermediate.csr.pem \
@@ -121,8 +120,8 @@ echo
 echo Create the application signing request
 echo ---
 mkdir -p 3_application/csr
-openssl req -config intermediate_openssl.cnf \
-      -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$1" \
+openssl req -config openssl_intermediate.cnf \
+      -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
       -passin pass:$2 \
       -key 3_application/private/$1.key.pem \
       -new -sha256 -out 3_application/csr/$1.csr.pem
@@ -132,7 +131,7 @@ echo
 echo Create the application certificate
 echo ---
 mkdir -p 3_application/certs
-openssl ca -config intermediate_openssl.cnf \
+openssl ca -config openssl_intermediate.cnf \
       -passin pass:$2 \
       -extensions server_cert -days 375 -notext -md sha256 \
       -in 3_application/csr/$1.csr.pem \
@@ -170,8 +169,8 @@ echo
 echo Generate the client signing request
 echo ---
 mkdir -p 4_client/csr
-openssl req -config intermediate_openssl.cnf \
-      -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=$1" \
+openssl req -config openssl_intermediate.cnf \
+      -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
       -passin pass:$2 \
       -key 4_client/private/$1.key.pem \
       -new -sha256 -out 4_client/csr/$1.csr.pem
@@ -181,7 +180,7 @@ echo
 echo Create the client certificate
 echo ---
 mkdir -p 4_client/certs
-openssl ca -config intermediate_openssl.cnf \
+openssl ca -config openssl_intermediate.cnf \
       -passin pass:$2 \
       -extensions usr_cert -days 375 -notext -md sha256 \
       -in 4_client/csr/$1.csr.pem \

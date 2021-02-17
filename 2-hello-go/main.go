@@ -12,6 +12,7 @@ import (
 
 var domain = flag.String("domain", "localhost", "Provide the domain name for the server")
 var mtls = flag.Bool("mtls", false, "Enable Mutual authentication")
+var httpPort = flag.String("port", "9443", "Set the HTTP(S) port")
 
 func main() {
 	flag.Parse()
@@ -21,7 +22,7 @@ func main() {
 		fmt.Fprint(rw, "Hello World")
 	})
 
-	server := &http.Server{Addr: ":8443"}
+	server := &http.Server{Addr: ":"+*httpPort}
 	if *mtls {
 		server = createServerWithMTLS()
 	}
@@ -53,7 +54,7 @@ func createServerWithMTLS() *http.Server {
 	tlsConfig.BuildNameToCertificate()
 
 	return &http.Server{
-		Addr:      ":8443",
+		Addr:      ":"+*httpPort,
 		TLSConfig: tlsConfig,
 	}
 }
