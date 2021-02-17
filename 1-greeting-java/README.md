@@ -86,7 +86,7 @@ $ keytool -v \
         -keysize 2048 \
         -alias server \
         -validity 3650 \
-        -deststoretype pkcs12 \
+        -deststoretype PKCS12 \
         -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
         -ext ExtendedKeyUsage=serverAuth,clientAuth \
         -ext SubjectAlternativeName:c=DNS:localhost,IP:127.0.0.1
@@ -292,7 +292,7 @@ Enter PEM pass phrase:
 {"id":3,"content":"Hello, World!"}
 ```
 
-To take advantage of `curl --cert <certificate[:password]>` and avoid prompt for the private key's passphrase, we could generate a PKCS12 file in PEM format with a passphrase containing the certificate and its corresponding private key.
+To take advantage of `curl --cert <certificate[:password]>` and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and its corresponding private key.
 We can get it using the next command:
 
 ```sh
@@ -301,7 +301,10 @@ $ openssl pkcs12 \
           -out src/main/resources/client.p12.pem \
           -passin pass:secret \
           -passout pass:secret
+```
 
+Finally, execute curl again passing the passphrase using this flag `--cert <certificate[:password]>`:   
+```sh
 $ curl --cacert src/main/resources/server.crt \
        --cert src/main/resources/client.p12.pem:secret \
        https://localhost:9443/greeting
