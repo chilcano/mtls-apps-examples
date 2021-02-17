@@ -1,4 +1,4 @@
-# 1. Enabling MTLS on Spring Boot (Java) REST service
+# Example 1. Enabling MTLS on Spring Boot (Java) REST service
 
 This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 and Java 11. 
 
