@@ -185,6 +185,7 @@ can also validate the identity of the client and whether or not it is a trusted 
 You can get this by configuring the server (REST service) that you also want to validate the client with the property `client-auth` in the `src/main/resources/application.yml` file.   
 
 1. Update following properties in the `src/main/resources/application.yml` file of the REST service (server):   
+
 ```yaml
 server:
   port: 9443
@@ -193,14 +194,15 @@ server:
     key-store: classpath:server_identity.jks
     key-password: secret
     key-store-password: secret
-    client-auth: need                ## require client authn
+    client-auth: need                             ## require client authn
 ``` 
 
 2. Run your client to check REST service MTLS configuration.   
 
-
 ```sh
-$ curl -i --cacert src/main/resources/server.crt https://localhost:9443/greeting
+$ curl -i \
+      --cacert src/main/resources/server.crt \
+      https://localhost:9443/greeting
 
 curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
 ```
@@ -218,7 +220,7 @@ $ keytool -v \
         -keysize 2048 \
         -alias client \
         -validity 3650 \
-        -deststoretype pkcs12 \
+        -deststoretype PKCS12 \
         -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
         -ext ExtendedKeyUsage=serverAuth,clientAuth 
 ```
@@ -252,8 +254,100 @@ $ keytool -v \
         -noprompt
 ```
 
+5. Now update server `src/main/resources/application.yml` file to be aware of `server_truststore.jks`.
 
+```yaml
+server:
+  port: 9443
+  ssl:
+    enabled: true
+    key-store: classpath:server_identity.jks
+    key-password: secret
+    key-store-password: secret
+    client-auth: need                             ## require client authn
+    trust-store: classpath:server_truststore.jks  ## trusted root and intermediate certs store
+    trust-store-password: secret
+``` 
 
+6. Restart the server and check MTLS is enabled.  
+
+Unfortunatelly `cURL` doesn't support `Java KeyStore` files containing keys. The `cURL` only sopport `PEM`, `DER` and `ENG` and all `*.crt` files are in format `PEM`. Then, we need to convert `client_identity.jks`, which contain the client's key-pair (public and private) to `PEM` format.
+
+The below command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that next command is not necessary.
+
+```sh
+$ keytool -importkeystore \
+        -srckeystore src/main/resources/client_identity.jks \
+        -destkeystore src/main/resources/client_identity.p12 \
+        -srcstoretype JKS \
+        -deststoretype PKCS12 \
+        -srcstorepass secret \
+        -deststorepass secret \
+        -srcalias client \
+        -destalias client \
+        -srckeypass secret \
+        -destkeypass secret \
+        -noprompt
+```
+
+Generate the `PEM` file that holds only the private key.
+
+```sh
+$ openssl pkcs12 \
+          -in src/main/resources/client_identity.jks \
+          -out src/main/resources/client_identity.pem \
+          -passin pass:secret \
+          -passout pass:secret \
+          -nocerts
+```
+
+7. Finally, you are able to call to the REST service to test MTLS.
+
+```sh
+$ curl -i \
+      --cacert src/main/resources/server.crt \
+      --key src/main/resources/client_identity.pem \
+      --cert src/main/resources/client.crt \
+      https://localhost:9443/greeting
+
+Enter PEM pass phrase:
+HTTP/1.1 200 
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Wed, 17 Feb 2021 11:27:36 GMT
+
+{"id":3,"content":"Hello, World!"}
+```
+
+To take advantage of `curl --cert <certificate[:password]>` and avoid prompt for the private key's passphrase, we could generate a PKCS12 file in PEM format with a passphrase containing the certificate and its corresponding private key.
+We can get it using the next command:
+
+```sh
+$ openssl pkcs12 \
+          -in src/main/resources/client_identity.jks \
+          -out src/main/resources/client.p12.pem \
+          -passin pass:secret \
+          -passout pass:secret
+
+$ curl -i \
+      --cacert src/main/resources/server.crt \
+      --cert src/main/resources/client.p12.pem:secret \
+      https://localhost:9443/greeting
+
+HTTP/1.1 200 
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Wed, 17 Feb 2021 11:51:40 GMT
+
+{"id":5,"content":"Hello, World!"}
+```
+
+8. MTLS from the browser.
+
+By default, Chrome and Firefox can not stablish TLS communication with servers using self-signed certificates, however Chrome does have a flag for allowing untrusted certificates from the localhost origin. This option is available from the `chrome://flags/#allow-insecure-localhost` page. Once enabled, install in your browser the client PKCS12 file (`src/main/resources/client_identity.jks`) which contains the public-key certificate and private key protected by the `secret`, passphrase, and open the REST service `https://localhost:9443/greeting`. The browser will prompt to select the client identity to use during Mutual TLS authentication.
+
+![](img/mtls-java-3-chrome-allow-insecure-localhost.png)  
+![](img/mtls-java-4-chrome-allow-insecure-localhost.png)
 
 
 ## References
