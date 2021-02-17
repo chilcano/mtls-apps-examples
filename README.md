@@ -5,8 +5,8 @@ This repository contains 2 simple applications (REST microservices in Java and G
 | Application             | Description
 | ---                     | ---         
 | 1-greeting-java         | Simple REST microservice (Maven Project) based on Spring Boot 2.4.2 and Java 11. 
-| 2-two-uservices-go      | Two Go microservices
-
+| 2-two-uservices-go      | Two Go microservices.
+| 3-mtls-emojivoto-tf     | Example enabling MTLS on Buoyant [Emojivoto](https://github.com/buoyantio/emojivoto) microservices application using [SmallStep CA](https://github.com/smallstep/certificates) and [Envoy Proxy](https://www.envoyproxy.io/). This version is based on [Step AWS Emojivoto](https://github.com/smallstep/step-aws-emojivoto) example and it's adapted to be used for multiple users simultaneously without collisions.
 
 ## Preparation
 
@@ -85,14 +85,14 @@ To solve this, we are going to create a keystore with a public and private key f
 The communication between both parties (user and server) can be decrypted with the private key of the REST service (server). 
 The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
 
-3. Generate a TLS Certificate.   
+3. Generate the server certificate.   
 
 Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore) file as repository of public-key certificates and asymmetric private keys. Then, to create a keystore with a public and private key, execute the following command in your terminal:
 ```sh
 $ keytool -v \
         -genkeypair \
-        -dname "CN=MTLS for Java Microservice,OU=DevOps Playground,O=ECS,C=UK" \
-        -keystore src/main/resources/identity.jks \
+        -dname "CN=Server (MTLS for Java Microservice),OU=DevOps Playground,O=ECS,C=UK" \
+        -keystore src/main/resources/server_identity.jks \
         -storepass secret \
         -keypass secret \
         -keyalg RSA \
@@ -103,22 +103,19 @@ $ keytool -v \
         -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
         -ext ExtendedKeyUsage=serverAuth,clientAuth \
         -ext SubjectAlternativeName:c=DNS:localhost,IP:127.0.0.1
-```
 
-If all goes well, you should see this:
-```sh
 Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) with a validity of 3,650 days
         for: CN=MTLS for Java Microservice, OU=DevOps Playground, O=ECS, C=UK
-[Storing src/main/resources/identity.jks]
+[Storing src/main/resources/server_identity.jks]
 ```
 
-Now, you need update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and private key.  
+Once generated the TLS certificate, you will need to update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
 ```yaml
 server:
   port: 9443
   ssl:
     enabled: true
-    key-store: classpath:identity.jks
+    key-store: classpath:server_identity.jks
     key-password: secret
     key-store-password: secret
 ```
@@ -127,54 +124,13 @@ server:
 ```sh
 $ mvn clean spring-boot:run
 $ curl -i --insecure -v https://localhost:9443/greeting
+
 ## alternatively with '-k' option
-$ curl -i -k -v https://localhost:9443/greeting
+$ curl -i -k https://localhost:9443/greeting
 ``` 
 
-If everything has worked, then you should see this:
+If everything worked, then you should see this:
 ```sh
-*   Trying 127.0.0.1:9443...
-* TCP_NODELAY set
-* Connected to localhost (127.0.0.1) port 9443 (#0)
-* ALPN, offering h2
-* ALPN, offering http/1.1
-* successfully set certificate verify locations:
-*   CAfile: /etc/ssl/certs/ca-certificates.crt
-  CApath: /etc/ssl/certs
-* TLSv1.3 (OUT), TLS handshake, Client hello (1):
-* TLSv1.3 (IN), TLS handshake, Server hello (2):
-* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
-* TLSv1.3 (IN), TLS handshake, Certificate (11):
-* TLSv1.3 (IN), TLS handshake, CERT verify (15):
-* TLSv1.3 (IN), TLS handshake, Finished (20):
-* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
-* TLSv1.3 (OUT), TLS handshake, Finished (20):
-* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
-* ALPN, server did not agree to a protocol
-* Server certificate:
-*  subject: C=UK; O=ECS; OU=DevOps Playground; CN=MTLS for Java Microservice
-*  start date: Feb 16 14:59:31 2021 GMT
-*  expire date: Feb 14 14:59:31 2031 GMT
-*  issuer: C=UK; O=ECS; OU=DevOps Playground; CN=MTLS for Java Microservice
-*  SSL certificate verify result: unable to get local issuer certificate (20), continuing anyway.
-> GET /greeting HTTP/1.1
-> Host: localhost:9443
-> User-Agent: curl/7.68.0
-> Accept: */*
-> 
-* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
-* Mark bundle as not supporting multiuse
-< HTTP/1.1 200 
-HTTP/1.1 200 
-< Content-Type: application/json
-Content-Type: application/json
-< Transfer-Encoding: chunked
-Transfer-Encoding: chunked
-< Date: Tue, 16 Feb 2021 15:17:41 GMT
-Date: Tue, 16 Feb 2021 15:17:41 GMT
-
-< 
-* Connection #0 to host localhost left intact
 {"id":1,"content":"Hello, World!"}
 ```
 
@@ -190,7 +146,7 @@ establish a secure connection to it. To learn more about this situation and
 how to fix it, please visit the web page mentioned above.
 ```
 
-That means `curl` (client) can not get validate the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
+That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
 And if you open `https://localhost:9443/greeting` in your browser (another client) you will get similar error (see below image).
 
 ![](img/mtls-java-1-err-cert-authority-invalid.png)
@@ -201,7 +157,7 @@ $ keytool -v \
     -exportcert \
     -file src/main/resources/server.crt \
     -alias server \
-    -keystore src/main/resources/identity.jks \
+    -keystore src/main/resources/server_identity.jks \
     -storepass secret \
     -rfc 
 
@@ -221,11 +177,82 @@ Date: Tue, 16 Feb 2021 17:31:37 GMT
 ```
 
 
-### Enabling Mutual TLS Authentication
+### Enabling Mutual TLS Authentication (Two-way TLS)
+
+The configuration of MTLS (Two-way TLS) in the server will require a new certificate for the authentication of the client. 
+This configuration will force the client (curl, your browser or any proper HTTP client) to identify itself using a certificate, and in that way, the server (REST service) 
+can also validate the identity of the client and whether or not it is a trusted one. 
+You can get this by configuring the server (REST service) that you also want to validate the client with the property `client-auth` in the `src/main/resources/application.yml` file.   
+
+1. Update following properties in the `src/main/resources/application.yml` file of the REST service (server):   
+```yaml
+server:
+  port: 9443
+  ssl:
+    enabled: true
+    key-store: classpath:server_identity.jks
+    key-password: secret
+    key-store-password: secret
+    client-auth: need                ## require client authn
+``` 
+
+2. Run your client to check REST service MTLS configuration.   
+
 
 ```sh
+$ curl -i --cacert src/main/resources/server.crt https://localhost:9443/greeting
 
-``` 
+curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
+```
+
+Running the curl client will fail with the following error message: `error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0`. This indicates that the certificate of the client is not valid because there is no certificate at all. So, let's create one with the following command:
+
+```sh
+$ keytool -v \
+        -genkeypair \
+        -dname "CN=Client (MTLS for Java Microservice),OU=DevOps Playground,O=ECS,C=UK" \
+        -keystore src/main/resources/client_identity.jks \
+        -storepass secret \
+        -keypass secret \
+        -keyalg RSA \
+        -keysize 2048 \
+        -alias client \
+        -validity 3650 \
+        -deststoretype pkcs12 \
+        -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
+        -ext ExtendedKeyUsage=serverAuth,clientAuth 
+```
+
+> The above command will not add the `SubjectAlternativeName` attribute to the client certificate (`-ext SubjectAlternativeName:c=DNS:<client-fqdn>,IP:<client-ip-address>`) because the client (curl or browser) will be executed in the same host where the REST service is running. But if you want to execute the client (curl or browser) from different host, you could set a `SubjectAlternativeName` attribute with a `fqdn`, `hostname` or `IP address` what the REST service (server) can resolv and validate without issues.   
+> You can simulate this behaviour when running the client and server in the same host, only you have to add as client's hostname and server's hostname to the `/etc/hosts` file.
+
+Once the `client_identity.jks` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.jks`.
+
+3. Extract the client certificate from `client_identity.jks`
+
+```sh
+$ keytool -v \
+        -exportcert \
+        -file src/main/resources/client.crt \
+        -alias client \
+        -keystore src/main/resources/client_identity.jks \
+        -storepass secret \
+        -rfc 
+```
+
+4. Create the server truststore with the client certificate.  
+
+```sh
+$ keytool -v \
+        -importcert \
+        -file src/main/resources/client.crt \
+        -alias client \
+        -keystore src/main/resources/server_truststore.jks \
+        -storepass secret \
+        -noprompt
+```
+
+
 
 
 
