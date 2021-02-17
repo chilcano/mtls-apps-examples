@@ -121,7 +121,7 @@ $ curl -k https://localhost:9443/greeting
 
 Now, if we remove the `--insecure` or `-k` we will get this error:
 ```sh
-$ curl -i https://localhost:9443/greeting
+$ curl https://localhost:9443/greeting
 
 curl: (60) SSL certificate problem: unable to get local issuer certificate
 More details here: https://curl.haxx.se/docs/sslcerts.html
@@ -134,7 +134,7 @@ how to fix it, please visit the web page mentioned above.
 That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
 And if you open `https://localhost:9443/greeting` in your browser (another client) you will get similar error (see below image).
 
-![](img/mtls-java-1-err-cert-authority-invalid.png)
+![](../img/mtls-java-1-err-cert-authority-invalid.png)
 
 To avoid this, you need to have the certificate(s) of the server and you can get it with the following command:
 ```sh
@@ -151,12 +151,7 @@ Certificate stored in file <src/main/resources/server.crt>
 
 Now, install `src/main/resources/server.crt` in your browser or use it with curl command to call the REST service.
 ```sh
-$ curl -i --cacert src/main/resources/server.crt https://localhost:9443/greeting
-
-HTTP/1.1 200 
-Content-Type: application/json
-Transfer-Encoding: chunked
-Date: Tue, 16 Feb 2021 17:31:37 GMT
+$ curl --cacert src/main/resources/server.crt https://localhost:9443/greeting
 
 {"id":3,"content":"Hello, World!"}
 ```
@@ -184,9 +179,8 @@ server:
 2. Run your client to check REST service MTLS configuration.   
 
 ```sh
-$ curl -i \
-      --cacert src/main/resources/server.crt \
-      https://localhost:9443/greeting
+$ curl --cacert src/main/resources/server.crt \
+       https://localhost:9443/greeting
 
 curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
 ```
@@ -288,17 +282,12 @@ $ openssl pkcs12 \
 7. Finally, you are able to call to the REST service to test MTLS.   
 
 ```sh
-$ curl -i \
-      --cacert src/main/resources/server.crt \
-      --key src/main/resources/client_identity.pem \
-      --cert src/main/resources/client.crt \
-      https://localhost:9443/greeting
+$ curl --cacert src/main/resources/server.crt \
+       --key src/main/resources/client_identity.pem \
+       --cert src/main/resources/client.crt \
+       https://localhost:9443/greeting
 
 Enter PEM pass phrase:
-HTTP/1.1 200 
-Content-Type: application/json
-Transfer-Encoding: chunked
-Date: Wed, 17 Feb 2021 11:27:36 GMT
 
 {"id":3,"content":"Hello, World!"}
 ```
@@ -313,15 +302,9 @@ $ openssl pkcs12 \
           -passin pass:secret \
           -passout pass:secret
 
-$ curl -i \
-      --cacert src/main/resources/server.crt \
-      --cert src/main/resources/client.p12.pem:secret \
-      https://localhost:9443/greeting
-
-HTTP/1.1 200 
-Content-Type: application/json
-Transfer-Encoding: chunked
-Date: Wed, 17 Feb 2021 11:51:40 GMT
+$ curl --cacert src/main/resources/server.crt \
+       --cert src/main/resources/client.p12.pem:secret \
+       https://localhost:9443/greeting
 
 {"id":5,"content":"Hello, World!"}
 ```
@@ -330,8 +313,8 @@ Date: Wed, 17 Feb 2021 11:51:40 GMT
 
 By default, Chrome and Firefox can not stablish TLS communication with servers using self-signed certificates, however Chrome does have a flag for allowing untrusted certificates from the localhost origin. This option is available from the `chrome://flags/#allow-insecure-localhost` page. Once enabled, install in your browser the client PKCS12 file (`src/main/resources/client_identity.jks`) which contains the public-key certificate and private key protected by the `secret`, passphrase, and open the REST service `https://localhost:9443/greeting`. The browser will prompt to select the client identity to use during Mutual TLS authentication.
 
-![](img/mtls-java-3-chrome-allow-insecure-localhost.png)  
-![](img/mtls-java-4-chrome-allow-insecure-localhost.png)
+![](../img/mtls-java-3-chrome-allow-insecure-localhost.png)  
+![](../img/mtls-java-4-chrome-allow-insecure-localhost.png)
 
 
 ## References
