@@ -2,6 +2,8 @@
 
 This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 and Java 11. 
 
+![](../img/mtls-java-0-greeting-microservice-arch.png)
+
 ## Steps
 
 ### 1. Saying greeting (without encryption in transit)
