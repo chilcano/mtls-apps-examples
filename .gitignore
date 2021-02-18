@@ -32,8 +32,14 @@ build/
 ### VS Code ###
 .vscode/
 
-### Keys and Certs
+### sample 1 
 *.jks
 *.crt
 *.p12
 *.pem
+
+### sample 2 
+1_root/
+2_intermediate/
+3_application/
+4_client/

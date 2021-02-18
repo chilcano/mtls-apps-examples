@@ -4,6 +4,14 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ![](../img/mtls-java-0-greeting-microservice-arch.png)
 
+## Tools used
+
+* OpenJDK 11 and Spring Boot to create the microservice.
+* Java KeyTool to generate key-pairs, private and public keys, public key certificates and import, export and encode key material.
+* OpenSSL to convert certificates to PEM/DER formats.
+* Maven to build and run the application.
+
+
 ## Steps
 
 ### 1. Saying greeting (without encryption in transit)
@@ -324,11 +332,4 @@ By default, Chrome and Firefox can not stablish TLS communication with servers u
 
 ## References
 
-### Go
-* https://kofo.dev/how-to-mtls-in-golang
-* https://venilnoronha.io/a-step-by-step-guide-to-mtls-in-go
-* https://github.com/nicholasjackson/mtls-go-example
-* https://smallstep.com/hello-mtls/doc/server/go
-
-### Java
 * https://spring.io/guides/gs/rest-service/

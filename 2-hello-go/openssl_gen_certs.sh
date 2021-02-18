@@ -10,27 +10,28 @@ if [[ $1 = "cleanup" ]]; then
 fi
 
 if [[ $1 = "" ]]; then
-  echo "please specify a domain ./generate.sh www.example.com"
+  echo "Please specify a domain, for example www.my-example.com"
   exit 1
 fi
 
 if [[ $2 = "" ]]; then
-  echo "please specify a password for the private key"
+  echo "Please specify a passphrase for the private key"
   exit 1
 fi
 
-
 echo 
-echo Generate the root key
-echo ---
+echo Generate the root private key
+echo --------------------------------------------------------------------------
 mkdir -p 1_root/private
-openssl genrsa -aes256 -passout pass:$2 -out 1_root/private/ca.key.pem 4096
+openssl genrsa -aes256 \
+        -passout pass:$2 \
+        -out 1_root/private/ca.key.pem 4096
 
 chmod 444 1_root/private/ca.key.pem
 
 echo 
 echo Generate the root certificate
-echo ---
+echo --------------------------------------------------------------------------
 mkdir -p 1_root/certs
 mkdir -p 1_root/newcerts
 touch 1_root/index.txt
@@ -42,15 +43,14 @@ openssl req -config openssl_root.cnf \
       -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
       -out 1_root/certs/ca.cert.pem
 
-
 echo 
-echo Verify root key
-echo ---
+echo Verify root certificate
+echo --------------------------------------------------------------------------
 openssl x509 -noout -text -in 1_root/certs/ca.cert.pem
 
 echo 
-echo Generate the key for the intermediary certificate
-echo ---
+echo Generate the private key for the intermediate certificate
+echo --------------------------------------------------------------------------
 mkdir -p 2_intermediate/private
 openssl genrsa -aes256 \
   -passout pass:$2 \
@@ -58,10 +58,9 @@ openssl genrsa -aes256 \
 
 chmod 444 2_intermediate/private/intermediate.key.pem
 
-
 echo 
-echo Generate the signing request for the intermediary certificate
-echo ---
+echo Generate the signing request for the intermediate certificate
+echo --------------------------------------------------------------------------
 mkdir -p 2_intermediate/csr
 openssl req -config openssl_root.cnf -new -sha256 \
       -passin pass:$2 \
@@ -69,56 +68,54 @@ openssl req -config openssl_root.cnf -new -sha256 \
       -key 2_intermediate/private/intermediate.key.pem \
       -out 2_intermediate/csr/intermediate.csr.pem
 
-
 echo 
-echo Sign the intermediary
-echo ---
+echo Sign the intermediate certificate
+echo --------------------------------------------------------------------------
 mkdir -p 2_intermediate/certs
 mkdir -p 2_intermediate/newcerts
 touch 2_intermediate/index.txt
 echo "100212" > 2_intermediate/serial
-openssl ca -config openssl_root.cnf -extensions v3_intermediate_ca \
+openssl ca -config openssl_root.cnf \
+        -extensions v3_intermediate_ca \
         -passin pass:$2 \
         -days 3650 -notext -md sha256 \
         -in 2_intermediate/csr/intermediate.csr.pem \
-        -out 2_intermediate/certs/intermediate.cert.pem
+        -out 2_intermediate/certs/intermediate.cert.pem \
+        -batch
 
 chmod 444 2_intermediate/certs/intermediate.cert.pem
 
-
 echo 
-echo Verify intermediary
-echo ---
+echo Verify intermediate certificate
+echo --------------------------------------------------------------------------
 openssl x509 -noout -text \
       -in 2_intermediate/certs/intermediate.cert.pem
 
 openssl verify -CAfile 1_root/certs/ca.cert.pem \
       2_intermediate/certs/intermediate.cert.pem
 
-
 echo 
-echo Create the chain file
-echo ---
+echo Create the certificate chain file
+echo --------------------------------------------------------------------------
 cat 2_intermediate/certs/intermediate.cert.pem \
       1_root/certs/ca.cert.pem > 2_intermediate/certs/ca-chain.cert.pem
 
 chmod 444 2_intermediate/certs/ca-chain.cert.pem
 
-
 echo 
-echo Create the application key
-echo ---
+echo Create the application private key
+echo --------------------------------------------------------------------------
 mkdir -p 3_application/private
-openssl genrsa \
+### openssl genrsa -aes128 \      ### the '-aes128' param forces to create encrypted PEM file using password value in '-passout pass:$2'
+ openssl genrsa \
       -passout pass:$2 \
-    -out 3_application/private/$1.key.pem 2048
+      -out 3_application/private/$1.key.pem 2048
 
 chmod 444 3_application/private/$1.key.pem
 
-
 echo 
 echo Create the application signing request
-echo ---
+echo --------------------------------------------------------------------------
 mkdir -p 3_application/csr
 openssl req -config openssl_intermediate.cnf \
       -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
@@ -126,48 +123,44 @@ openssl req -config openssl_intermediate.cnf \
       -key 3_application/private/$1.key.pem \
       -new -sha256 -out 3_application/csr/$1.csr.pem
 
-
 echo 
 echo Create the application certificate
-echo ---
+echo --------------------------------------------------------------------------
 mkdir -p 3_application/certs
 openssl ca -config openssl_intermediate.cnf \
       -passin pass:$2 \
       -extensions server_cert -days 375 -notext -md sha256 \
       -in 3_application/csr/$1.csr.pem \
-      -out 3_application/certs/$1.cert.pem
+      -out 3_application/certs/$1.cert.pem \
+      -batch
 
 chmod 444 3_application/certs/$1.cert.pem
 
-
 echo 
-echo Validate the certificate
-echo ---
+echo Validate the application certificate
+echo --------------------------------------------------------------------------
 openssl x509 -noout -text \
       -in 3_application/certs/$1.cert.pem
 
-
 echo 
 echo Validate the certificate has the correct chain of trust
-echo ---
+echo --------------------------------------------------------------------------
 openssl verify -CAfile 2_intermediate/certs/ca-chain.cert.pem \
       3_application/certs/$1.cert.pem
 
-
-echo
-echo Generate the client key
-echo ---
+echo 
+echo Generate the client private key
+echo --------------------------------------------------------------------------
 mkdir -p 4_client/private
-openssl genrsa \
-    -passout pass:$2 \
-    -out 4_client/private/$1.key.pem 2048
+openssl genrsa -aes128 \
+      -passout pass:$2 \
+      -out 4_client/private/$1.key.pem 2048
 
 chmod 444 4_client/private/$1.key.pem
 
-
-echo
+echo 
 echo Generate the client signing request
-echo ---
+echo --------------------------------------------------------------------------
 mkdir -p 4_client/csr
 openssl req -config openssl_intermediate.cnf \
       -subj "/C=UK/ST=London/O=ECS/OU=DevOps Playground/CN=$1" \
@@ -175,15 +168,15 @@ openssl req -config openssl_intermediate.cnf \
       -key 4_client/private/$1.key.pem \
       -new -sha256 -out 4_client/csr/$1.csr.pem
 
-
 echo 
 echo Create the client certificate
-echo ---
+echo --------------------------------------------------------------------------
 mkdir -p 4_client/certs
 openssl ca -config openssl_intermediate.cnf \
       -passin pass:$2 \
       -extensions usr_cert -days 375 -notext -md sha256 \
       -in 4_client/csr/$1.csr.pem \
-      -out 4_client/certs/$1.cert.pem
+      -out 4_client/certs/$1.cert.pem \
+      -batch
 
 chmod 444 4_client/certs/$1.cert.pem

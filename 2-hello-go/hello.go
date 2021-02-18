@@ -19,7 +19,7 @@ func main() {
 
 	http.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
-		fmt.Fprint(rw, "Hello World")
+		fmt.Fprint(rw, "Hello World \n")
 	})
 
 	server := &http.Server{Addr: ":"+*httpPort}
@@ -27,15 +27,15 @@ func main() {
 		server = createServerWithMTLS()
 	}
 
-	// Start the server loading the certificate and key
+	// start the server loading the cert and key
 	err := server.ListenAndServeTLS("3_application/certs/"+*domain+".cert.pem", "3_application/private/"+*domain+".key.pem")
 	if err != nil {
-		log.Fatal("Unable to start server", err)
+		log.Fatal("Unable to start server: ", err)
 	}
 }
 
 func createServerWithMTLS() *http.Server {
-	// Add the cert chain as the intermediate signs both the servers and the clients certificates
+	// add the cert chain as the intermediate signs both the servers and the clients cert
 	clientCACert, err := ioutil.ReadFile("2_intermediate/certs/ca-chain.cert.pem")
 	if err != nil {
 		log.Fatal(err)

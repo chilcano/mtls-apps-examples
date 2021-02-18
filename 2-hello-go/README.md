@@ -1,56 +1,191 @@
-# MTLS Example
-Simple example to demonstrate how to use Mutual Authentication with Golang HTTP servers.
+# Example 2. Enabling MTLS on Go-based Microservices
 
-## Generating certificates
-Generating the necessary certificates for this example can be performed by running the `./generate.sh` command and providing the domain name to create the cert 
-for and the password for the keys.
+This is a simple REST microservice based on Go 1.13.8 create to demonstrate how to configure Mutual TLS authentication (Two-way TLS) using TLS certificates issued for Intermediate Certificate Authority.
 
-```bash
-./generate.sh localhost password
+![](../img/mtls-go-0-hello-microservice-arch.png)
+
+This example is based on [Nick Jackson's MTLS Example GitHub repo](https://github.com/nicholasjackson/mtls-go-example), only I've tweaked a little bit:
+- Set TLS port as parameter.
+- Generate all private key with passphrase.
+- Generate PKCS12 files.
+- Able to read encrypted server private key to run HTTPS.
+
+## Tools used
+
+* Go
+* OpenSSL
+
+### Components
+
+* `hello.go` - microservice implementation, listen on `9443` port by default.
+* `openssl_gen_certs.sh` - create Root, Intermediate, client and server certificates using OpenSSL.
+* `openssl_root.cnf` - OpenSSL template to generate Root certificate.
+* `openssl_intermediate.cnf` - OpenSSL template to generate Intermediate certificate.
+
+
+## Steps
+
+### 1. Generate Root CA, Intermediate CA, server and client certificate
+
+1. Prepare all certificates.   
+
+```sh
+$ cd mtls-apps-examples/2-hello.go
+$ ./openssl_gen_certs.sh cleanup
 ```
 
-A certificate is only valid if the domain matches the hosted domain of the server, for example a certificate issue to the domain www.example.com would raise an exception
-if you attempted to run `curl https://localhost`.
+2. Generate all certificates for the `localhost` domain with the passphrase `secret`.
 
-The script generates a root certificate and key, an intermediary, application certificate and a client certificate.  Both the application and client certificate are generated from the 
-intermediary this would allow the client to authenticate any server which uses the intermediary chain.  It is possible to lock a client certificate down to a particular application 
-by signing it with the applications certificate rather than the intermediary.
+> You can use other different domain rather `localhost`, if so, that domain must be able to resolve through the available DNS server. If you don't have a DNS server, a workaround is adding that domain name to `/etc/hosts` file.
 
-## Running the server using a self signed certificate
-Start the server  
-```bash
-$ go run main.go -domain localhost
+```sh
+$ ./openssl_gen_certs.sh localhost secret
+
+$ tree .
+.
+├── 1_root
+│   ├── certs
+│   │   └── ca.cert.pem
+│   ├── index.txt
+│   ├── index.txt.attr
+│   ├── index.txt.old
+│   ├── newcerts
+│   │   └── 100212.pem
+│   ├── private
+│   │   └── ca.key.pem
+│   ├── serial
+│   └── serial.old
+├── 2_intermediate
+│   ├── certs
+│   │   ├── ca-chain.cert.pem
+│   │   └── intermediate.cert.pem
+│   ├── csr
+│   │   └── intermediate.csr.pem
+│   ├── index.txt
+│   ├── index.txt.attr
+│   ├── index.txt.attr.old
+│   ├── index.txt.old
+│   ├── newcerts
+│   │   ├── 100212.pem
+│   │   └── 100213.pem
+│   ├── private
+│   │   └── intermediate.key.pem
+│   ├── serial
+│   └── serial.old
+├── 3_application
+│   ├── certs
+│   │   └── localhost.cert.pem
+│   ├── csr
+│   │   └── localhost.csr.pem
+│   └── private
+│       └── localhost.key.pem
+├── 4_client
+│   ├── certs
+│   │   └── localhost.cert.pem
+│   ├── csr
+│   │   └── localhost.csr.pem
+│   └── private
+│       └── localhost.key.pem
+├── hello.go
+├── openssl_gen_certs.sh
+├── openssl_intermediate.cnf
+├── openssl_root.cnf
+└── README.md
 ```
 
-When calling the endpoint it is requred to add the ca-chain cert to the curl command as this is a self signed certificate.
+### 2. Test One-way TLS
 
-```bash
-$ curl -v --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:8443/
+1. Run the microservice.   
 
-#...
-Hello World% 
+```sh
+$ go version
+go version go1.13.8 linux/amd64
+
+$ go run -v hello.go -domain localhost
 ```
 
-## Running the server with Mutual TLS Authentication and a self signed certifcate
-Start the server  
-```bash
-$ go run main.go -domain localhost -mtls true
+2. Call the microservice.   
+
+```sh
+$ curl -i --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:9443/
+
+HTTP/2 200 
+content-type: text/plain
+content-length: 13
+date: Wed, 17 Feb 2021 20:34:45 GMT
+
+Hello World 
 ```
 
-Call the endpoint providing the certificates generated for the client, for the server to validate the request the user must provide its 
-certifcate and private key.
-```bash
-$ curl -v --cacert 2_intermediate/certs/ca-chain.cert.pem --cert 4_client/certs/localhost.cert.pem --key 4_client/private/localhost.key.pem https://localhost:8443/
+The `2_intermediate/certs/ca-chain.cert.pem` file contains Root and Intermediate certificates in `PEM` format, required to validate the server certificate that microservice sends during the TLS handshake.
 
-#...
-Hello World% 
+### 3. Test Two-way TLS (Mutual TLS authentication)
+
+1. Start the microservice.   
+
+```sh
+$ go run -v hello.go -domain localhost -mtls true
 ```
 
-Calling the endpoint without providing the certificates
+2. Call the microservice.   
+
+Call the endpoint providing the certificates generated for the client, for the server to validate the request the user must provide its certifcate and private key.
+
+```sh
+$ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+        --cert 4_client/certs/localhost.cert.pem \
+        --key 4_client/private/localhost.key.pem \
+        https://localhost:9443/
+
+Enter PEM pass phrase:
+
+Hello World 
+```
+
+You could pass to curl the passphrase used to encrypt the client private key through `curl --cert <certificate[:password]>`, in this way when calling through curl, it doesn't prompt for the passphrase. 
+
+```sh
+$ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+        --cert 4_client/certs/localhost.cert.pem:secret \
+        --key 4_client/private/localhost.key.pem \
+        https://localhost:9443/
+
+Hello World 
+```
+
+Also, you could get a `PKCS12` client file containing certificate and private key and avoid pass the private key through the `--key 4_client/private/localhost.key.pem`. Just execute this command:   
+
+```sh
+$ openssl pkcs12 -export \
+          -inkey 4_client/private/localhost.key.pem \
+          -in 4_client/certs/localhost.cert.pem \
+          -out 4_client/certs/localhost.p12 \
+          -passin pass:secret \
+          -passout pass:secret
+```
+
+If you call the microservice without providing the client certificate, you will have error.
 
 ```bash
-$ curl -v --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:8443/
+$ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+        https://localhost:9443/
 
-#...
-curl: (35) error:14094412:SSL routines:SSL3_READ_BYTES:sslv3 alert bad certificate
+curl: (16) OpenSSL SSL_write: Broken pipe, errno 32
 ```
+
+And in the microservices side you will have this error message:
+```sh
+...
+2021/02/17 21:48:07 http: TLS handshake error from 127.0.0.1:57786: tls: client didn't provide a certificate
+```
+
+3. Testing using a browser.   
+
+Like the [Greeting Java microservice](../1-greeting-java), you must install the client certificate and its corresponding private key in the browser, also must be installed the certificate chain and trust on those.
+The difficult is convert all those client certificate and private key, and certificate chain in a format that you browser support. Note that `open_gen_certs.sh` has generated all keys and certificates in `PEM` format, however the above openssl command already joined the client certificate and the private key in a `PKCS12` file. Only you need to import to your browser, during this process the browser will ask for the passphrase, and that is all.
+
+
+## References
+
+* https://medium.com/@prateeknischal25/using-encrypted-private-keys-with-golang-server-379919955854
+* https://gist.github.com/jshap70/259a87a7146393aab5819873a193b88c
