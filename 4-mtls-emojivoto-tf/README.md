@@ -1,4 +1,4 @@
-# MTLS Emojivoto on AWS
+# Example 4. MTLS Emojivoto on AWS (Secure Data Plane)
 
 > This Git repo is based in [SmallStep Emojivoto demo](https://github.com/smallstep/step-aws-emojivoto).  
 > The application used is the [Buoyant Emojivoto](https://github.com/buoyantio/emojivoto) microservices.  
