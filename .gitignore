@@ -43,3 +43,13 @@ build/
 2_intermediate/
 3_application/
 4_client/
+
+### sample 4
+*/.step
+*.tfstate*
+*.backup
+.terraform
+token.txt
+*.log
+*.zip
+*.hcl
