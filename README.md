@@ -5,7 +5,7 @@ This repository contains Microservices-based applications used to explain the im
 
 ## Slides
 
-![DevOps Playground - MTLS Authn for Microservices.pdf](slides/DevOpsPlayground-MTLSAuthnforMicroservices.pdf)
+![DevOps Playground - MTLS Authn for Microservices](slides/DevOpsPlayground-MTLSAuthnforMicroservices.pdf)
 
 
 ## Labs
