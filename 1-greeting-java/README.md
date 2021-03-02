@@ -30,6 +30,7 @@ server:
 #### 2. Clean and build the project for the first time.  
 
 > **Important:**   
+>   
 > Make sure the owner of all files and directories under `workdir` is ``$USER`, if the owner is ``root` the labs will not work.
 > You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 
@@ -168,7 +169,11 @@ how to fix it, please visit the web page mentioned above.
 
 ![](../img/mtls-java-1-err-cert-authority-invalid.png)
 
-To avoid this, you need to have the certificate(s) of the server and you can get it with the following command:
+If you know the hostname (fqdn) of your workstation, then you can use it:
+
+![](../img/mtls-java-1-err-cert-authority-invalid-2.png)
+
+To avoid this error, you need to have the certificate(s) of the server and you can get it with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
 ```sh
 $ keytool -v \
     -exportcert \
@@ -211,13 +216,13 @@ server:
 2. Run your client to check REST service MTLS configuration.   
 
 ```sh
-$ curl --cacert src/main/resources/server.crt \
-       https://localhost:9443/greeting
+$ curl --cacert src/main/resources/server.crt https://localhost:9443/greeting
 
 curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
 ```
 
-Running the curl client will fail with the following error message: `error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0`. This indicates that the certificate of the client is not valid because there is no certificate at all. So, let's create one with the following command:
+Running the curl client will fail with the following error message: `error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0`.   
+This indicates that the certificate of the client is not valid because there is no certificate at all. So, let's create one with the following command:
 
 ```sh
 $ keytool -v \
@@ -235,7 +240,7 @@ $ keytool -v \
         -ext ExtendedKeyUsage=serverAuth,clientAuth 
 ```
 
-> The above command will not add the `SubjectAlternativeName` attribute to the client certificate (`-ext SubjectAlternativeName:c=DNS:<client-fqdn>,IP:<client-ip-address>`) because the client (curl or browser) will be executed in the same host where the REST service is running. But if you want to execute the client (curl or browser) from different host, you could set a `SubjectAlternativeName` attribute with a `fqdn`, `hostname` or `IP address` what the REST service (server) can resolv and validate without issues.   
+> The above command will not add the `SubjectAlternativeName` attribute to the client certificate (`-ext SubjectAlternativeName:c=DNS:<client-fqdn>,IP:<client-ip-address>`) because the client (curl or browser) will be executed in the same host where the REST service is running. But if you want to execute the client (curl or browser) from different host, you could set a `SubjectAlternativeName` attribute with a `fqdn`, `hostname` or `IP address` what the REST service (server) can resolve and validate without issues.   
 > You can simulate this behaviour when running the client and server in the same host, only you have to add as client's hostname and server's hostname to the `/etc/hosts` file.
 
 Once the `client_identity.jks` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.jks`.
