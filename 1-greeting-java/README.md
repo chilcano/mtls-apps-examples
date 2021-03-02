@@ -171,7 +171,7 @@ how to fix it, please visit the web page mentioned above.
 
 If you know the hostname (fqdn) of your workstation, then you can use it:
 
-![](../img/mtls-java-1-err-cert-authority-invalid-2.png)
+![](../img/mtls-java-1-err-cert-authority-invalid-3.png)
 
 To avoid this error, you need to have the certificate(s) of the server and you can get it with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
 ```sh
