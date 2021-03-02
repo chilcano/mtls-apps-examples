@@ -16,14 +16,22 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ### 1. Saying greeting (without encryption in transit)
 
-1. Check the REST service (`src/main/resources/application.yml`) configuration. You should have this configuration:  
+#### 1. Initial configuration of REST service.
+
+Check the initial confiration file. That file is locate here `src/main/resources/application.yml` and you should have this configuration:  
 
 ```yaml
+$ cat src/main/resources/application.yml
+
 server:
   port: 9090
 ``` 
 
-2. Clean and build the project for the first time.  
+#### 2. Clean and build the project for the first time.  
+
+> **Important:**   
+> Make sure the owner of all files and directories under `workdir` is ``$USER`, if the owner is ``root` the labs will not work.
+> You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 
 ```sh
 $ cd mtls-apps-examples/1-greeting-java 
@@ -31,13 +39,14 @@ $ mvn clean
 $ mvn spring-boot:run
 ``` 
 
-3. Calling the REST service.  
+#### 3. Calling the REST service.  
 
+In other terminal, execute this:
 ```sh
 $ curl -i http://localhost:9090/greeting
 ```
 
-4. It should give you the following response:  
+#### 4. It should give you the following response:  
 
 ```sh
 HTTP/1.1 200 
@@ -48,27 +57,31 @@ Date: Tue, 16 Feb 2021 13:41:15 GMT
 {"id":1,"content":"Hello, World!"}
 ```
 
-5. Close the running REST service typing `Ctrl + C`.   
+#### 5. Close the running REST service.
+
+Just type `Ctrl + C`.   
 
 ### 2. Enabling HTTP over TLS (One-way TLS)
 
-1. Update the `src/main/resources/application.yml` to enable One-way TLS.   
+#### 1. Enable One-way TLS.   
 
+Only update `src/main/resources/application.yml` with the next configuration:  
 ```yaml
+$ nano src/main/resources/application.yml
+
 server:
   port: 9443
   ssl:
     enabled: true
 ``` 
 
-2. Restart the REST service so that it can apply the changes and test it.   
+#### 2. Restart the REST service so that it can apply the changes.   
 
 ```sh
 $ mvn clean spring-boot:run
-$ curl -i https://localhost:9443/greeting
 ``` 
 
-We will probably get the following error:
+You will get the following error:
 ```sh
 Caused by: java.lang.IllegalArgumentException: Resource location must not be null
         at org.springframework.util.Assert.notNull(Assert.java:201) ~[spring-core-5.3.3.jar:5.3.3]
@@ -82,7 +95,7 @@ To solve this, we are going to create a keystore with a public and private key f
 The communication between both parties (user and server) can be decrypted with the private key of the REST service (server). 
 The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
 
-3. Generate the server certificate.   
+#### 3. Generate the server certificate.   
 
 Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore) file as repository of public-key certificates and asymmetric private keys. Then, to create a keystore with a public and private key, execute the following command in your terminal:
 ```sh
@@ -108,6 +121,8 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 
 Once generated the TLS certificate, you will need to update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
 ```yaml
+$ nano src/main/resources/application.yml
+
 server:
   port: 9443
   ssl:
@@ -117,10 +132,14 @@ server:
     key-store-password: secret
 ```
 
-4. Test the One-way TLS connection.   
+#### 4. Run the REST service and test the One-way TLS connection.   
 
 ```sh
 $ mvn clean spring-boot:run
+```
+
+In other terminal execute this:
+```sh
 $ curl --insecure -v https://localhost:9443/greeting
 
 ## alternatively with '-k' option
@@ -140,9 +159,9 @@ curl failed to verify the legitimacy of the server and therefore could not
 establish a secure connection to it. To learn more about this situation and
 how to fix it, please visit the web page mentioned above.
 ```
-
-That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
-And if you open `https://localhost:9443/greeting` in your browser (another client) you will get similar error (see below image).
+> **Important:**   
+> That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
+> And if you open `https://localhost:9443/greeting` in your browser (another client) you will get similar error (see below image).
 
 ![](../img/mtls-java-1-err-cert-authority-invalid.png)
 

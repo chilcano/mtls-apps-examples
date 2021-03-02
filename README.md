@@ -20,13 +20,24 @@ This repository contains Microservices-based applications used to explain the im
 
 ## Preparation
 
-Clone the repository.
+### Clone the repository.
 ```sh
 ## clone the repo
 $ git clone <repo>
 ```
 
-Install Java 11, Maven and Go.
+### Install Java 11, Maven and Go.
 ```sh
 $ source <(curl -s https://raw.githubusercontent.com/chilcano/how-tos/master/src/devops_playground_tools_install.sh) 
 ```
+
+### Install a Fancy Linux Prompt
+
+```sh
+$ curl -sS https://raw.githubusercontent.com/diogocavilha/fancy-git/master/install.sh | sh
+$ . ~/.bashrc
+$ fancygit human
+$ . ~/.bashrc
+```
+
+
