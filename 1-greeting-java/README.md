@@ -89,11 +89,13 @@ Caused by: java.lang.IllegalArgumentException: Resource location must not be nul
         at org.springframework.boot.web.embedded.tomcat.SslConnectorCustomizer.configureSslKeyStore(SslConnectorCustomizer.java:129) ~[spring-boot-2.4.2.jar:2.4.2]
         ... 16 common frames omitted
 ```
-
-We are getting this message because the REST service (server) requires a keystore with the certificate of the REST service (server) to ensure that there is a secure connection with the outside world.  
-To solve this, we are going to create a keystore with a public and private key for the REST service (server). The public key will be shared with users/clients so that they can encrypt the communication. 
-The communication between both parties (user and server) can be decrypted with the private key of the REST service (server). 
-The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
+> **Important:**   
+>   
+> We are getting this message because the REST service (server) requires a keystore with the certificate of the REST service (server) to ensure that there is a secure connection with the outside world.  
+>  
+> To solve this, we are going to create a keystore with a public and private key for the REST service (server). The public key will be shared with users/clients so that they can encrypt the communication.  
+> The communication between both parties (user and server) can be decrypted with the private key of the REST service (server).  
+> The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
 
 #### 3. Generate the server certificate.   
 
@@ -160,6 +162,7 @@ establish a secure connection to it. To learn more about this situation and
 how to fix it, please visit the web page mentioned above.
 ```
 > **Important:**   
+>   
 > That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
 > And if you open `https://localhost:9443/greeting` in your browser (another client) you will get similar error (see below image).
 
