@@ -165,15 +165,11 @@ how to fix it, please visit the web page mentioned above.
 > **Important:**   
 >   
 > That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
-> And if you open `https://localhost:9443/greeting` in your browser (another client) you will get similar error (see below image).
 
 ![](../img/mtls-java-1-err-cert-authority-invalid.png)
 
-If you know the hostname (fqdn) of your workstation, then you can use it:
-
-![](../img/mtls-java-1-err-cert-authority-invalid-3.png)
-
-To avoid this error, you need to have the certificate(s) of the server and you can get it with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
+To avoid this error, you need to get the certificate(s) of the server and store it in trusted CA certificate store in your server and/or browser.  
+You can get the server certificate with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
 ```sh
 $ keytool -v \
     -exportcert \
@@ -186,12 +182,82 @@ $ keytool -v \
 Certificate stored in file <src/main/resources/server.crt>
 ```
 
-Now, install `src/main/resources/server.crt` in your browser or use it with curl command to call the REST service.
+Now, install `src/main/resources/server.crt` in trusted CA certificate store that curl uses, once done, you will be able to call the REST service without problems.  
 ```sh
-$ curl --cacert src/main/resources/server.crt https://localhost:9443/greeting
-
-{"id":3,"content":"Hello, World!"}
+$ curl --cacert src/main/resources/server.crt \
+       --capath /etc/ssl/certs/ \
+        https://localhost:9443/greeting
 ```
+Install CA certificates in the trusted CA certificate store and make available to curl requires compile curl from source code. The process is explained in below links:
+* [curl website - SSL Certificate Verification](https://curl.se/docs/sslcerts.html)
+* [Daniel Stenberg's blog - Get the CA Cert for curl](https://daniel.haxx.se/blog/2018/11/07/get-the-ca-cert-for-curl/)
+
+Unfortunately curl still will show same error about `verify the legitimacy of the server` because, curl doesn't validate self-signed certificates, despite installing it in the CA certificate store. 
+However, you would bypass this using Browser instead of curl.
+
+#### 5. Testing the One-way TLS connection using Chrome Browser.   
+
+Bypassing certificate validation is not a recommended option in many of the client libraries and applications. However, we can do it in our Browser, only for testing purposes.  
+We need to get access to our REST service from a fully qualified domain name (fqdn) and if you are lucky of using a remote workstation provided by **DevOps Playground Team**, then you that is easy.  
+First of all, you need to identify what is your assigned `Panda`, with that you can open this url (`https://<panda-type>.devopsplayground.org:9443/greeting`) in your browser.  
+In my case the REST service is available in this URL `https://funny-panda.devopsplayground.org:9443/greeting`. See below images:
+
+![](../img/mtls-java-1-chrome-1.png)
+
+You will see `NET::ERR_CERT_AUTHORITY_INVALID` message, that means you have to install and trust on the CA certificate, and since our server certificate is a self-signed certificate, only the server certificate is needed. You can download it from your remote workstation or copy it directly from browser. See next image.
+
+![](../img/mtls-java-1-chrome-2.png)
+
+Once downloaded the server certificate, install it in your browser. See next images to how to install the certificate in Chrome.
+
+![](../img/mtls-java-1-chrome-3.png)
+![](../img/mtls-java-1-chrome-4.png)
+
+Once installed as trusted CA in your browser, reload your browser and you will see the `NET::ERR_CERT_COMMON_NAME_INVALID` message. It means you have trusted on a server certificate that doesn't match with the REST service's Domain Name. In other words, the server certificate has been generated for a REST service hosted on `localhost` and `127.0.0.1` and not on `funny-panda.devopsplayground.org`.   
+
+![](../img/mtls-java-1-chrome-5.png)
+
+At this point you are able to accept the risk and proceed to use the REST service. But, if you don't want it would generate a new server certificate with a proper FQDN. Only follow below steps: 
+
+```sh
+$ rm -rf src/main/resources/server*
+```
+
+Now, generate a new server certificate (and private key) using your assigned `Panda` (FQDN). Note this parameter `SubjectAlternativeName:c=DNS:funny-panda.devopsplayground.org,DNS:localhost,IP:127.0.0.1`:
+```sh
+$ keytool -v \
+        -genkeypair \
+        -dname "CN=Server Funny-Panda,OU=DevOps Playground,O=ECS,C=UK" \
+        -keystore src/main/resources/server_identity.jks \
+        -storepass secret \
+        -keypass secret \
+        -keyalg RSA \
+        -keysize 2048 \
+        -alias server \
+        -validity 3650 \
+        -deststoretype PKCS12 \
+        -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
+        -ext ExtendedKeyUsage=serverAuth,clientAuth \
+        -ext SubjectAlternativeName:c=DNS:funny-panda.devopsplayground.org,DNS:localhost,IP:127.0.0.1
+```
+
+Get the new server certificate (`server_fqdn.crt`) to be downloaded or just copy the PEM format from your browser like you did above. 
+```sh
+$ keytool -v \
+    -exportcert \
+    -file src/main/resources/server_fqdn.crt \
+    -alias server \
+    -keystore src/main/resources/server_identity.jks \
+    -storepass secret \
+    -rfc 
+```
+
+![](../img/mtls-java-1-chrome-6.png)
+
+Once installed the new server certificate with the FQDN as a trusted CA certificate in your browser, reload the REST service `Ctrl + C` and `mvn clean spring-boot:run`, open a Chrome incognito window with the REST service URL and you will not see any error message anymore.
+
+![](../img/mtls-java-1-chrome-7.png)
+
 
 ### 3. Enabling Mutual TLS Authentication (Two-way TLS)
 
