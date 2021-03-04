@@ -14,7 +14,7 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ## Steps
 
-### 1. Saying greeting (without encryption in transit)
+### I) Saying greeting (without encryption in transit)
 
 #### 1. Initial configuration of REST service.
 
@@ -36,8 +36,7 @@ server:
 
 ```sh
 $ cd mtls-apps-examples/1-greeting-java 
-$ mvn clean
-$ mvn spring-boot:run
+$ mvn clean spring-boot:run
 ``` 
 
 #### 3. Calling the REST service.  
@@ -62,7 +61,7 @@ Date: Tue, 16 Feb 2021 13:41:15 GMT
 
 Just type `Ctrl + C`.   
 
-### 2. Enabling HTTP over TLS (One-way TLS)
+### II) HTTP over TLS (One-way TLS)
 
 #### 1. Enable One-way TLS.   
 
@@ -259,7 +258,7 @@ Once installed the new server certificate with the FQDN as a trusted CA certific
 ![](../img/mtls-java-1-chrome-7.png)
 
 
-### 3. Enabling Mutual TLS Authentication (Two-way TLS)
+### III) Enabling Mutual TLS Authentication (Two-way TLS)
 
 The configuration of MTLS (Two-way TLS) in the server will require a new certificate for the authentication of the client. 
 This configuration will force the client (curl, your browser or any proper HTTP client) to identify itself using a certificate, and in that way, the server (REST service) 
