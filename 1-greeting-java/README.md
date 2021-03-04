@@ -265,9 +265,11 @@ This configuration will force the client (curl, your browser or any proper HTTP 
 can also validate the identity of the client and whether or not it is a trusted one. 
 You can get this by configuring the server (REST service) that you also want to validate the client with the property `client-auth` in the `src/main/resources/application.yml` file.   
 
-1. Update following properties in the `src/main/resources/application.yml` file of the REST service (server):   
+#### 1. Update the REST service (server) properties in `src/main/resources/application.yml`. 
 
 ```yaml
+$ nano src/main/resources/application.ym
+
 server:
   port: 9443
   ssl:
@@ -278,16 +280,31 @@ server:
     client-auth: need                             ## require client authn
 ``` 
 
-2. Run your client to check REST service MTLS configuration.   
+#### 2. Restart the REST service and check the MTLS configuration.   
 
+Check if you have `server_identity.jks` and `server.crt` or `server_fqdn.crt`.
 ```sh
-$ curl --cacert src/main/resources/server.crt https://localhost:9443/greeting
+$ ll src/main/resources/
+```
+
+Clean and run the server.
+```sh
+$ mvn clean spring-boot:run
+```
+
+In other terminal execute curl. Using `server.crt `or `server_fqdn.crt` doesn't matter because we are going to use the `-k` flag to avoid the hostname validation, which is not the purpose of this step.
+```sh
+$ curl -k --cacert src/main/resources/server_fqdn.crt https://localhost:9443/greeting
 
 curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
 ```
 
 Running the curl client will fail with the following error message: `error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0`.   
-This indicates that the certificate of the client is not valid because there is no certificate at all. So, let's create one with the following command:
+This indicates that the certificate of the client is not valid because there is no certificate at all. So, let's create one.
+
+#### 3. Generating a client certificate.  
+
+We are going to use ``Java KeyTool` to create a new client self-signed certificate. Use the following command:
 
 ```sh
 $ keytool -v \
@@ -310,8 +327,9 @@ $ keytool -v \
 
 Once the `client_identity.jks` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.jks`.
 
-3. Extract the client certificate from `client_identity.jks`.  
+#### 4. Extract the client certificate from `client_identity.jks`.  
 
+The `client_identity.jks` file containts the key-pair (private and public key) and the public key certificate. We need run the below command to get only the publick key certificate.
 ```sh
 $ keytool -v \
         -exportcert \
@@ -322,8 +340,9 @@ $ keytool -v \
         -rfc 
 ```
 
-4. Create the server truststore with the client certificate.   
+#### 5. Create the server `truststore` with the client certificate.   
 
+The `truststore` file must contain all the certificates that are trusted, and since we have 2 self-signed certificates (client and server) in this Lab, the `truststore` will be the same for the client and server.
 ```sh
 $ keytool -v \
         -importcert \
@@ -334,7 +353,7 @@ $ keytool -v \
         -noprompt
 ```
 
-5. Now update server `src/main/resources/application.yml` file to be aware of `server_truststore.jks`.   
+#### 6. Update the server `src/main/resources/application.yml` file to be aware of `server_truststore.jks`.   
 
 ```yaml
 server:
@@ -349,12 +368,12 @@ server:
     trust-store-password: secret
 ``` 
 
-6. Restart the server and check MTLS is enabled.   
+#### 7. Restart the server and check MTLS is enabled.   
 
-Unfortunatelly `cURL` doesn't support `Java KeyStore` files containing keys. The `cURL` only sopport `PEM`, `DER` and `ENG` and all `*.crt` files are in format `PEM`. Then, we need to convert `client_identity.jks`, which contain the client's key-pair (public and private) to `PEM` format.
-
-The below command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that next command is not necessary.
-
+> Since `cURL` only sopports `PEM`, `DER` and `ENG` and all `*.crt` files in format `PEM` and doesn't support `Java KeyStore` files containing key material (`*.jks`). We need to extract the client private key in `PEM` format from `client_identity.jks` file.
+> Only if that is the case, we need to convert the `JKS` to ``PKCS12` and then extract the private key from the `PKCS12`. 
+> Then, the next `keytool` command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that next command is not necessary.   
+>  
 ```sh
 $ keytool -importkeystore \
         -srckeystore src/main/resources/client_identity.jks \
@@ -370,8 +389,7 @@ $ keytool -importkeystore \
         -noprompt
 ```
 
-Generate the `PEM` file that holds only the private key.
-
+Generate the `PEM` file that holds only the client private key.
 ```sh
 $ openssl pkcs12 \
           -in src/main/resources/client_identity.jks \
@@ -381,21 +399,44 @@ $ openssl pkcs12 \
           -nocerts
 ```
 
-7. Finally, you are able to call to the REST service to test MTLS.   
+#### 8. Finally, you are able to call to the REST service to test MTLS.   
 
+Restart the server:
 ```sh
-$ curl --cacert src/main/resources/server.crt \
+$ mvn clean spring-boot:run
+```
+
+In other terminal execute curl.
+```sh
+$ curl --cacert src/main/resources/server_fqdn.crt \
        --key src/main/resources/client_identity.pem \
        --cert src/main/resources/client.crt \
        https://localhost:9443/greeting
 
 Enter PEM pass phrase:
 
-{"id":3,"content":"Hello, World!"}
+curl: (60) SSL certificate problem: unable to get local issuer certificate
+More details here: https://curl.haxx.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
 ```
 
-To take advantage of `curl --cert <certificate[:password]>` and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and its corresponding private key.
-We can get it using the next command:
+The above error happens because the server certificate's SAN doesn't match the REST service's domain name. Lets bypass this error for a moment and use `-k` flag to check if the REST service and MTLS are working.
+
+```sh
+$ curl -k --cacert src/main/resources/server_fqdn.crt \
+       --key src/main/resources/client_identity.pem \
+       --cert src/main/resources/client.crt \
+       https://localhost:9443/greeting
+
+Enter PEM pass phrase:
+
+{"id":2,"content":"Hello, World!"}
+```
+
+To take advantage of `--cert <certificate[:password]>` flag and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and use all together according the previous flag (`--cert <certificate[:password]>`). Then, follow the next command:
 
 ```sh
 $ openssl pkcs12 \
@@ -405,16 +446,30 @@ $ openssl pkcs12 \
           -passout pass:secret
 ```
 
-Finally, execute curl again passing the passphrase using this flag `--cert <certificate[:password]>`:   
+Finally, execute curl again passing the passphrase using the aforementioned flag `--cert <certificate[:password]>`:   
 ```sh
-$ curl --cacert src/main/resources/server.crt \
+$ curl -k --cacert src/main/resources/server_fqdn.crt \
        --cert src/main/resources/client.p12.pem:secret \
        https://localhost:9443/greeting
 
-{"id":5,"content":"Hello, World!"}
+{"id":3,"content":"Hello, World!"}
 ```
 
-8. MTLS from the browser.   
+#### 9. MTLS from the browser.   
+
+Fist of all, download `server_fqdn.crt` and `client.p12.pem`, both already in ``PEM` format, and install both in Certificate Store of your Browser. Installing the `server_fqdn.crt` we are trusting in the server, while installing the `client.p12.pem` and its passphrase we are certifying that we are the only ones who have the identity of the client.
+
+```sh
+$ cat src/main/resources/server.crt
+
+$ cat src/main/resources/client.p12.pem 
+```
+
+Secondly, we are able to call the REST service with MTLS (Two-way TLS) through our browser and using a FQDN.
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
 
 By default, Chrome and Firefox can not stablish TLS communication with servers using self-signed certificates, however Chrome does have a flag for allowing untrusted certificates from the localhost origin. This option is available from the `chrome://flags/#allow-insecure-localhost` page. Once enabled, install in your browser the client PKCS12 file (`src/main/resources/client_identity.jks`) which contains the public-key certificate and private key protected by the `secret`, passphrase, and open the REST service `https://localhost:9443/greeting`. The browser will prompt to select the client identity to use during Mutual TLS authentication.
 
