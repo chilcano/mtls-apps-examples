@@ -104,7 +104,7 @@ Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore)
 $ keytool -v \
         -genkeypair \
         -dname "CN=Server (MTLS for Java Microservice),OU=DevOps Playground,O=ECS,C=UK" \
-        -keystore src/main/resources/server_identity.jks \
+        -keystore src/main/resources/server_identity.p12 \
         -storepass secret \
         -keypass secret \
         -keyalg RSA \
@@ -118,7 +118,7 @@ $ keytool -v \
 
 Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) with a validity of 3,650 days
         for: CN=MTLS for Java Microservice, OU=DevOps Playground, O=ECS, C=UK
-[Storing src/main/resources/server_identity.jks]
+[Storing src/main/resources/server_identity.p12]
 ```
 
 Once generated the TLS certificate, you will need to update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
@@ -129,7 +129,7 @@ server:
   port: 9443
   ssl:
     enabled: true
-    key-store: classpath:server_identity.jks
+    key-store: classpath:server_identity.p12
     key-password: secret
     key-store-password: secret
 ```
@@ -174,7 +174,7 @@ $ keytool -v \
     -exportcert \
     -file src/main/resources/server.crt \
     -alias server \
-    -keystore src/main/resources/server_identity.jks \
+    -keystore src/main/resources/server_identity.p12 \
     -storepass secret \
     -rfc 
 
@@ -205,12 +205,14 @@ In my case the REST service is available in this URL `https://funny-panda.devops
 
 You will see `NET::ERR_CERT_AUTHORITY_INVALID` message, that means you have to install and trust on the CA certificate, and since our server certificate is a self-signed certificate, only the server certificate is needed. You can download it from your remote workstation or copy it directly from browser. See next image.
 
-![](../img/mtls-java-1-chrome-2.png)
+![](../img/mtls-java-1-chrome-2.png)   
 
 Once downloaded the server certificate, install it in your browser. See next images to how to install the certificate in Chrome.
 
-![](../img/mtls-java-1-chrome-3.png)
-![](../img/mtls-java-1-chrome-4.png)
+![](../img/mtls-java-1-chrome-3.png)   
+
+
+![](../img/mtls-java-1-chrome-4.png)  
 
 Once installed as trusted CA in your browser, reload your browser and you will see the `NET::ERR_CERT_COMMON_NAME_INVALID` message. It means you have trusted on a server certificate that doesn't match with the REST service's Domain Name. In other words, the server certificate has been generated for a REST service hosted on `localhost` and `127.0.0.1` and not on `funny-panda.devopsplayground.org`.   
 
@@ -227,7 +229,7 @@ Now, generate a new server certificate (and private key) using your assigned `Pa
 $ keytool -v \
         -genkeypair \
         -dname "CN=Server Funny-Panda,OU=DevOps Playground,O=ECS,C=UK" \
-        -keystore src/main/resources/server_identity.jks \
+        -keystore src/main/resources/server_identity.p12 \
         -storepass secret \
         -keypass secret \
         -keyalg RSA \
@@ -246,7 +248,7 @@ $ keytool -v \
     -exportcert \
     -file src/main/resources/server_fqdn.crt \
     -alias server \
-    -keystore src/main/resources/server_identity.jks \
+    -keystore src/main/resources/server_identity.p12 \
     -storepass secret \
     -rfc 
 ```
@@ -274,7 +276,7 @@ server:
   port: 9443
   ssl:
     enabled: true
-    key-store: classpath:server_identity.jks
+    key-store: classpath:server_identity.p12
     key-password: secret
     key-store-password: secret
     client-auth: need                             ## require client authn
@@ -282,7 +284,7 @@ server:
 
 #### 2. Restart the REST service and check the MTLS configuration.   
 
-Check if you have `server_identity.jks` and `server.crt` or `server_fqdn.crt`.
+Check if you have `server_identity.p12` and `server.crt` or `server_fqdn.crt`.
 ```sh
 $ ll src/main/resources/
 ```
@@ -310,7 +312,7 @@ We are going to use ``Java KeyTool` to create a new client self-signed certifica
 $ keytool -v \
         -genkeypair \
         -dname "CN=Client (MTLS for Java Microservice),OU=DevOps Playground,O=ECS,C=UK" \
-        -keystore src/main/resources/client_identity.jks \
+        -keystore src/main/resources/client_identity.p12 \
         -storepass secret \
         -keypass secret \
         -keyalg RSA \
@@ -325,24 +327,24 @@ $ keytool -v \
 > The above command will not add the `SubjectAlternativeName` attribute to the client certificate (`-ext SubjectAlternativeName:c=DNS:<client-fqdn>,IP:<client-ip-address>`) because the client (curl or browser) will be executed in the same host where the REST service is running. But if you want to execute the client (curl or browser) from different host, you could set a `SubjectAlternativeName` attribute with a `fqdn`, `hostname` or `IP address` what the REST service (server) can resolve and validate without issues.   
 > You can simulate this behaviour when running the client and server in the same host, only you have to add as client's hostname and server's hostname to the `/etc/hosts` file.
 
-Once the `client_identity.jks` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.jks`.
+Once the `client_identity.p12` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.p12`.
 
-#### 4. Extract the client certificate from `client_identity.jks`.  
+#### 4. Extract the client certificate from `client_identity.p12`.  
 
-The `client_identity.jks` file containts the key-pair (private and public key) and the public key certificate. We need run the below command to get only the publick key certificate.
+The `client_identity.p12` file containts the key-pair (private and public key) and the public key certificate. We need run the below command to get only the publick key certificate.
 ```sh
 $ keytool -v \
         -exportcert \
         -file src/main/resources/client.crt \
         -alias client \
-        -keystore src/main/resources/client_identity.jks \
+        -keystore src/main/resources/client_identity.p12 \
         -storepass secret \
         -rfc 
 ```
 
 #### 5. Create the server `truststore` with the client certificate.   
 
-The `truststore` file must contain all the certificates that are trusted, and since we have 2 self-signed certificates (client and server) in this Lab, the `truststore` will be the same for the client and server.
+The `truststore`, in `JKS` format, file must contain all certificates that are trusted, and since we have 2 self-signed certificates (client and server) in this Lab, the `truststore` will be the same for the client and server.
 ```sh
 $ keytool -v \
         -importcert \
@@ -360,7 +362,7 @@ server:
   port: 9443
   ssl:
     enabled: true
-    key-store: classpath:server_identity.jks
+    key-store: classpath:server_identity.p12
     key-password: secret
     key-store-password: secret
     client-auth: need                             ## require client authn
@@ -368,12 +370,12 @@ server:
     trust-store-password: secret
 ``` 
 
-#### 7. Restart the server and check MTLS is enabled.   
+#### 7. Get the client private key in PEM format. 
 
-> Since `cURL` only sopports `PEM`, `DER` and `ENG` and all `*.crt` files in format `PEM` and doesn't support `Java KeyStore` files containing key material (`*.jks`). We need to extract the client private key in `PEM` format from `client_identity.jks` file.
+> Since `cURL` only sopports `PEM`, `DER` and `ENG` and all `*.crt` files in format `PEM` and doesn't support `Java KeyStore` files containing key material (`*.jks`). We need to extract the client private key in `PEM` format from `client_identity.p12` file.
 > Only if that is the case, we need to convert the `JKS` to ``PKCS12` and then extract the private key from the `PKCS12`. 
-> Then, the next `keytool` command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that next command is not necessary.   
->  
+> Then, the next `keytool` command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that **next command is not necessary**.   
+
 ```sh
 $ keytool -importkeystore \
         -srckeystore src/main/resources/client_identity.jks \
@@ -389,10 +391,10 @@ $ keytool -importkeystore \
         -noprompt
 ```
 
-Generate the `PEM` file that holds only the client private key.
+Get the `PEM` file from `client_identity.p12` that holds only the client private key.
 ```sh
 $ openssl pkcs12 \
-          -in src/main/resources/client_identity.jks \
+          -in src/main/resources/client_identity.p12 \
           -out src/main/resources/client_identity.pem \
           -passin pass:secret \
           -passout pass:secret \
@@ -436,12 +438,14 @@ Enter PEM pass phrase:
 {"id":2,"content":"Hello, World!"}
 ```
 
-To take advantage of `--cert <certificate[:password]>` flag and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and use all together according the previous flag (`--cert <certificate[:password]>`). Then, follow the next command:
+#### 9. Testing MTLS using the Client PKCS12 (key-pair).  
+
+To take advantage of `--cert <certificate[:password]>` flag and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and use all together according the previous flag (`--cert <certificate[:password]>`). To use it, only follow the next command:
 
 ```sh
 $ openssl pkcs12 \
-          -in src/main/resources/client_identity.jks \
-          -out src/main/resources/client.p12.pem \
+          -in src/main/resources/client_identity.p12 \
+          -out src/main/resources/client_identity.pem \
           -passin pass:secret \
           -passout pass:secret
 ```
@@ -449,33 +453,37 @@ $ openssl pkcs12 \
 Finally, execute curl again passing the passphrase using the aforementioned flag `--cert <certificate[:password]>`:   
 ```sh
 $ curl -k --cacert src/main/resources/server_fqdn.crt \
-       --cert src/main/resources/client.p12.pem:secret \
+       --cert src/main/resources/client_identity.pem:secret \
        https://localhost:9443/greeting
 
 {"id":3,"content":"Hello, World!"}
 ```
 
-#### 9. MTLS from the browser.   
+#### 10. MTLS from the browser.   
 
-Fist of all, download `server_fqdn.crt` and `client.p12.pem`, both already in ``PEM` format, and install both in Certificate Store of your Browser. Installing the `server_fqdn.crt` we are trusting in the server, while installing the `client.p12.pem` and its passphrase we are certifying that we are the only ones who have the identity of the client.
+Fist of all, download `server_fqdn.crt` and `client_identity.p12`, and install both in the Certificate Store of your Browser. Installing the `server_fqdn.crt` we are trusting in the server, while installing the `client_identity.p12` using its passphrase we are certifying that we are the only ones who have the identity of the client.
 
-```sh
-$ cat src/main/resources/server.crt
+To download both files you can use the Code-Server (Web IDE based on VS Code). See below image:
 
-$ cat src/main/resources/client.p12.pem 
-```
+![](../img/mtls-java-1-vs-code-server.png)
 
-Secondly, we are able to call the REST service with MTLS (Two-way TLS) through our browser and using a FQDN.
+Now, we are ready to call the REST service with MTLS (Two-way TLS) through our browser and using a FQDN.
 
-xxxxxxxxxxxxxxxxxxxxxxxxxxx
+![](../img/mtls-java-1-chrome-fqdn-2-way-1.png)
+
+You will immediately be asked to select your client identity (`client_identity.p12` file that you previously installed)
+
+![](../img/mtls-java-1-chrome-fqdn-2-way-2.png)
+
+![](../img/mtls-java-1-chrome-fqdn-2-way-3.png)
+
+![](../img/mtls-java-1-chrome-fqdn-2-way-4.png)
 
 
+**Observation:**   
+By default, Chrome and Firefox can not stablish TLS truested communication with servers using certificates in localhost or running in your own LAN, however Chrome does have a flag for allowing untrusted certificates from the localhost origin. This option is available from the `chrome://flags/#allow-insecure-localhost` page. Once enabled, install in your browser the client PKCS12 file (`src/main/resources/client_identity.p12`) which contains the public-key certificate and private key protected by the `secret`, passphrase, and open the REST service `https://localhost:9443/greeting`. The browser will prompt to select the client identity to use during Mutual TLS authentication.
 
-By default, Chrome and Firefox can not stablish TLS communication with servers using self-signed certificates, however Chrome does have a flag for allowing untrusted certificates from the localhost origin. This option is available from the `chrome://flags/#allow-insecure-localhost` page. Once enabled, install in your browser the client PKCS12 file (`src/main/resources/client_identity.jks`) which contains the public-key certificate and private key protected by the `secret`, passphrase, and open the REST service `https://localhost:9443/greeting`. The browser will prompt to select the client identity to use during Mutual TLS authentication.
-
-![](../img/mtls-java-3-chrome-allow-insecure-localhost.png)  
-![](../img/mtls-java-4-chrome-allow-insecure-localhost.png)
-
+![](../img/mtls-java-1-allow-insecure-localhost-in-chrome.png)  
 
 ## References
 
