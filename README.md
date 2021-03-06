@@ -24,9 +24,9 @@ If you have registed to this workshop through [DevOps Playground Meetup](https:/
 If you have `<Panda-Type>` assigned to registration, then you should have access to:
 
 1. Wetty - Web terminal.
-   - `[http://<Panda-Type>.devopsplayground.org/wetty](http://<Panda-Type>.devopsplayground.org/wetty)`
+   - `http://<Panda-Type>.devopsplayground.org/wetty`
 2. Code-Server - Web IDE based on VS Code.
-   - `[http://<Panda-Type>.devopsplayground.org:8000/](http://<Panda-Type>.devopsplayground.org:8000/)`
+   - `http://<Panda-Type>.devopsplayground.org:8000/`
 
 ![](img/dpg-prep-1-wetty.png)
 
