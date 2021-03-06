@@ -93,7 +93,7 @@ drwxr-xr-x    1 root     root          4096 Mar  6 08:10 ..
 * `/data/caddy/` - It is the directory where the Caddy data (certificates, CA, etc.) is saved.
 * `/usr/share/caddy/` - It is the directory where the static web page is saved.
 
-#### 3. Checking if Caddy is serving static web page on the port `8001`:
+#### 3. Checking if Caddy is serving static web page.
 
 
 ```sh
@@ -116,14 +116,16 @@ And from a browser:
 ![](../img/mtls-3-caddy-1-chrome.png)
 
 
-#### 4. Checking the running Caddy docker processes
+#### 4. Checking the running Caddy docker instances.
 
 ```sh
 $ docker ps
 
-CONTAINER ID   IMAGE                         COMMAND                  CREATED          STATUS          PORTS                                     NAMES
-a3ba303fbe6e   caddy                         "caddy run --config …"   59 seconds ago   Up 59 seconds   443/tcp, 2019/tcp, 0.0.0.0:8002->80/tcp   caddy2
-a433bf9e14c3   caddy                         "caddy run --config …"   4 minutes ago    Up 4 minutes    443/tcp, 2019/tcp, 0.0.0.0:8001->80/tcp   caddy1
+CONTAINER ID   IMAGE                         COMMAND                  CREATED         STATUS         PORTS                                     NAMES
+04f2635e574e   caddy                         "caddy run --config …"   6 seconds ago   Up 4 seconds   443/tcp, 2019/tcp, 0.0.0.0:8002->80/tcp   caddy2
+5039cb97b9dc   caddy                         "caddy run --config …"   2 minutes ago   Up 2 minutes   443/tcp, 2019/tcp, 0.0.0.0:8001->80/tcp   caddy1
+6a72db4c85ee   codercom/code-server:latest   "/usr/bin/entrypoint…"   4 minutes ago   Up 4 minutes   0.0.0.0:8000->8080/tcp                    code-server
+545f1d109483   wettyoss/wetty                "yarn docker-entrypo…"   5 minutes ago   Up 5 minutes   0.0.0.0:80->3000/tcp                      wetty
 ```
 
 Remove recently created containers:  
@@ -176,7 +178,7 @@ $ docker run -d -p 9070:8080 \
     --name kuard \
     gcr.io/kuar-demo/kuard-amd64:1
 
-$ curl localhost:9070/healthy
+$ curl http://localhost:9070/healthy
 
 ok
 ```
@@ -210,21 +212,47 @@ $ docker run -d -p 9090:9080 \
     caddy
 ```
 
-Checking the caddy docker processes:
+Checking all Docker processes:
 ```sh
 $ docker ps -a
 
+CONTAINER ID   IMAGE                            COMMAND                  CREATED          STATUS          PORTS                                               NAMES
+ba5e5996dd56   caddy                            "caddy run --config …"   27 seconds ago   Up 26 seconds   80/tcp, 443/tcp, 2019/tcp, 0.0.0.0:9090->9080/tcp   caddy3
+0a4c5846c075   gcr.io/kuar-demo/kuard-amd64:1   "/kuard"                 3 minutes ago    Up 3 minutes    0.0.0.0:9070->8080/tcp                              kuard
+04f2635e574e   caddy                            "caddy run --config …"   4 minutes ago    Up 4 minutes    443/tcp, 2019/tcp, 0.0.0.0:8002->80/tcp             caddy2
+5039cb97b9dc   caddy                            "caddy run --config …"   7 minutes ago    Up 7 minutes    443/tcp, 2019/tcp, 0.0.0.0:8001->80/tcp             caddy1
+6a72db4c85ee   codercom/code-server:latest      "/usr/bin/entrypoint…"   9 minutes ago    Up 9 minutes    0.0.0.0:8000->8080/tcp                              code-server
+545f1d109483   wettyoss/wetty                   "yarn docker-entrypo…"   9 minutes ago    Up 9 minutes    0.0.0.0:80->3000/tcp                                wetty
 ```
 
-#### 4. Checking Kuard being proxied through Caddy.
+#### 4. Calling Kuard through Proxy.
+
+From your remote workstation:
+```sh
+$ curl -ivk https://localhost:9090/healthy
+
+*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 9090 (#0)
+* ALPN, offering h2
+* ALPN, offering http/1.1
+* successfully set certificate verify locations:
+*   CAfile: /etc/ssl/certs/ca-certificates.crt
+  CApath: /etc/ssl/certs
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+* error:1408F10B:SSL routines:ssl3_get_record:wrong version number
+* stopped the pause stream!
+* Closing connection 0
+curl: (35) error:1408F10B:SSL routines:ssl3_get_record:wrong version number
+```
 
 From your local computer:
-
 ```sh
 $ curl http://funny-panda.devopsplayground.org:9090/:9070/healthy
 ```
 
-![](../img/mtls-3-caddy-2-kuard.png)
+![](../img/mtls-3-caddy-3-kuard-caddy-proxy.png)
+
 
 
 ### IV. Test One-way TLS.
@@ -240,3 +268,5 @@ TBC
 * JSON schema generator for Caddy v2
    - https://github.com/abiosoft/caddy-json-schema
 
+* ssss
+   - https://caddyserver.com/docs/caddyfile/directives/reverse_proxy
