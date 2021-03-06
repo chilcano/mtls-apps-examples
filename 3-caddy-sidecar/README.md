@@ -54,9 +54,9 @@ caddy                  latest    88588539bb90   3 hours ago    39.5MB
 codercom/code-server   latest    681a48e7bf50   3 weeks ago    838MB
 wettyoss/wetty         latest    06a426b25e16   4 months ago   148MB
 ```
-## Examples
+## Examples:
 
-### 1. Checking basic usage with Caddy in docker
+### I. Basic usage with Caddy in Docker.
 
 #### 1. Serving static files with Caddy on HTTP.
 
@@ -126,12 +126,12 @@ a3ba303fbe6e   caddy                         "caddy run --config …"   59 secon
 a433bf9e14c3   caddy                         "caddy run --config …"   4 minutes ago    Up 4 minutes    443/tcp, 2019/tcp, 0.0.0.0:8001->80/tcp   caddy1
 ```
 
-Remove recently created container:  
+Remove recently created containers:  
 ```sh
 $ docker rm -f caddy1 caddy2
 ```
 
-### 2. Advanced Caddy configurations.
+### II. Advanced Caddy configuration.
 
 
 #### 1. Overwriting the Caddy config file
@@ -165,9 +165,9 @@ Hola amigo!
 ```
 
 
-### 3. Checking automatic TLS with Caddy in docker
+### III. Caddy as HTTP Proxy.
 
-We are going to configure Caddy as a Proxy (no as `file_server`) listening on `9080` to expose Kuard running `9070` port.
+We are going to configure Caddy as a Proxy (no as `file_server`) listening on `9080` to expose Kuard ([Demo application for "Kubernetes Up and Running"](https://github.com/kubernetes-up-and-running/kuard)) running `9070` port.
 
 #### 1. Running Kuard
 
@@ -227,7 +227,11 @@ $ curl http://funny-panda.devopsplayground.org:9090/:9070/healthy
 ![](../img/mtls-3-caddy-2-kuard.png)
 
 
-### 3. Test Two-way TLS (Mutual TLS authentication)
+### IV. Test One-way TLS.
+
+TBC
+
+### V. Test Two-way TLS (Mutual TLS authentication).
 
 TBC
 
