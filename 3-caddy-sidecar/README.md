@@ -50,62 +50,92 @@ docker.io/library/caddy:latest
 Checking the downloaded Caddy docker image.
 ```sh
 $ docker images
-REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
-caddy               latest              2c73dc9258a8        7 weeks ago         39.5MB
+
+REPOSITORY             TAG       IMAGE ID       CREATED        SIZE
+caddy                  latest    88588539bb90   3 hours ago    39.5MB
+codercom/code-server   latest    681a48e7bf50   3 weeks ago    838MB
+wettyoss/wetty         latest    06a426b25e16   4 months ago   148MB
 ```
 
 ### 2. Checking basic usage with Caddy in docker
 
+Caddy is able to server static files and work as proxy at the same time. Lets check if Caddy using this feature: 
 ```sh
-$ cd 1-basic
-
-$ echo "Hola amigo!" > index.html
-
-$ docker run -d -p 81:80 \
-    -v $PWD/index.html:/usr/share/caddy/index.html \
-    -v caddy_data:/data \
+$ docker run -d -p 8001:80 \
+    -v $PWD/1-basic/hola.html:/usr/share/caddy/hola.html \
+    --name caddy1 \
     caddy
 ```
 
-Checking if Caddy is running as a Docker process:
+Checking if Caddy is serving `site/hola.html` on the port `8001`:
 ```sh
-$ docker ps
-
-CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                   NAMES
-cfd9b8b9a993        caddy               "caddy run --config …"   8 seconds ago       Up 8 seconds        443/tcp, 2019/tcp, 0.0.0.0:81->80/tcp   relaxed_cartwright
-```
-
-Checking if Caddy is serving `index.html` in the port `81`:
-```sh
-$ curl -i http://localhost:81
+$ curl -i http://localhost:8001/hola.html
 
 HTTP/1.1 200 OK
 Accept-Ranges: bytes
-Content-Length: 11
+Content-Length: 12
 Content-Type: text/html; charset=utf-8
-Etag: "qp1edyb"
-Last-Modified: Wed, 24 Feb 2021 14:17:58 GMT
+Etag: "qpjzl3c"
+Last-Modified: Sat, 06 Mar 2021 15:12:39 GMT
 Server: Caddy
-Date: Wed, 24 Feb 2021 14:23:37 GMT
+Date: Sat, 06 Mar 2021 15:19:21 GMT
 
 Hola amigo!
 ```
 
+Now, run another Caddy instance over the `8002` port and overwritting its `/etc/caddy/Caddyfile` config file: 
+```sh
+$ docker run -d -p 8002:80 \
+    -v $PWD/1-basic/hola.html:/usr/share/caddy/hola.html \
+    -v $PWD/1-basic/Caddyfile:/etc/caddy/Caddyfile \
+    -v caddy_data:/data \
+    --name caddy2 \
+    caddy
+```
+
+Checking the Caddy docker processes are running:
+```sh
+$ docker ps
+
+CONTAINER ID   IMAGE                         COMMAND                  CREATED          STATUS          PORTS                                     NAMES
+a3ba303fbe6e   caddy                         "caddy run --config …"   59 seconds ago   Up 59 seconds   443/tcp, 2019/tcp, 0.0.0.0:8002->80/tcp   caddy2
+a433bf9e14c3   caddy                         "caddy run --config …"   4 minutes ago    Up 4 minutes    443/tcp, 2019/tcp, 0.0.0.0:8001->80/tcp   caddy1
+```
+
+Remove recently created container:  
+```sh
+$ docker rm -f caddy1 caddy2
+```
 
 ### 2. Checking automatic TLS with Caddy in docker
 
 
 ```sh
-$ cd 2-tls
-
-$ mkdir site caddy_data caddy_config
-
-$ echo "Hello friend!!" > site/index.html
+## $ mkdir site caddy_data caddy_config
 
 $ docker run -d -p 82:80 -p 442:443 \
     -v $PWD/site:/srv \
     -v $PWD/caddy_data:/data \
     -v $PWD/caddy_config:/config \
+    --name caddy-82 \
+    caddy caddy file-server --domain $HOSTNAME
+
+
+$ docker run -d -p 84:80 -p 444:443 \
+    -v $PWD/site:/srv \
+    -v $PWD/caddy_data:/data \
+    -v $PWD/caddy_config:/config \
+    --name caddy-84 \
+    caddy caddy file-server --domain funny-panda.devopsplayground.org
+
+$ docker run -d -p 85:80 -p 8445:443 \
+    -v $PWD/site/index.html:/usr/share/caddy/index.html \
+    --name caddy-85 \
+    caddy caddy file-server --domain $HOSTNAME
+
+docker run -d -p 8443:443 \
+    -v $PWD/site/index.html:/usr/share/caddy/index.html \
+    --name caddy-86 \
     caddy caddy file-server --domain $HOSTNAME
 ```
 
@@ -113,62 +143,61 @@ Checking the caddy docker process:
 ```sh
 $docker ps
 
-CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                                NAMES
-7080ba995f36        caddy               "caddy file-server -…"   9 seconds ago       Up 7 seconds        2019/tcp, 0.0.0.0:82->80/tcp, 0.0.0.0:442->443/tcp   nervous_euclid
-cfd9b8b9a993        caddy               "caddy run --config …"   16 minutes ago      Up 16 minutes       443/tcp, 2019/tcp, 0.0.0.0:81->80/tcp                relaxed_cartwright
+CONTAINER ID   IMAGE                         COMMAND                  CREATED              STATUS              PORTS                                                NAMES
+bd8c3af50661   caddy                         "caddy file-server -…"   6 seconds ago        Up 5 seconds        2019/tcp, 0.0.0.0:82->80/tcp, 0.0.0.0:442->443/tcp   caddy-82
+e1a87e6e508d   caddy                         "caddy run --config …"   About a minute ago   Up About a minute   443/tcp, 2019/tcp, 0.0.0.0:81->80/tcp                caddy-81
 ```
 
-Checking TLS:
+Checking HTTP and TLS:  
+
 ```sh
-$ curl -iv http://inti.local:82
-*   Trying 172.17.0.1:82...
+$ curl -iv http://$HOSTNAME:82
+
+* Rebuilt URL to: http://playground:82/
+*   Trying 10.0.10.83...
 * TCP_NODELAY set
-* Connected to inti.local (172.17.0.1) port 82 (#0)
+* Connected to playground (10.0.10.83) port 82 (#0)
 > GET / HTTP/1.1
-> Host: inti.local:82
-> User-Agent: curl/7.68.0
+> Host: playground:82
+> User-Agent: curl/7.58.0
 > Accept: */*
 > 
-* Mark bundle as not supporting multiuse
 < HTTP/1.1 308 Permanent Redirect
 HTTP/1.1 308 Permanent Redirect
 < Connection: close
 Connection: close
-< Location: https://inti.local/
-Location: https://inti.local/
+< Location: https://playground/
+Location: https://playground/
 < Server: Caddy
 Server: Caddy
-< Date: Wed, 24 Feb 2021 14:48:23 GMT
-Date: Wed, 24 Feb 2021 14:48:23 GMT
+< Date: Sat, 06 Mar 2021 11:54:40 GMT
+Date: Sat, 06 Mar 2021 11:54:40 GMT
 < Content-Length: 0
 Content-Length: 0
 
 < 
 * Closing connection 0
+```
+Since Caddy has generated succesfully a TLS certificate for $HOSTNAME, Caddy is redirecting the traffic to the HTTPS site.  
+Let's call to the HTTPS site:  
+```sh
+$ curl -iv https://$HOSTNAME:442
 
-
-curl -i -v https://inti.local:442
-*   Trying 172.17.0.1:442...
+* Rebuilt URL to: https://playground:442/
+*   Trying 10.0.10.83...
 * TCP_NODELAY set
-* Connected to inti.local (172.17.0.1) port 442 (#0)
+* Connected to playground (10.0.10.83) port 442 (#0)
 * ALPN, offering h2
 * ALPN, offering http/1.1
 * successfully set certificate verify locations:
 *   CAfile: /etc/ssl/certs/ca-certificates.crt
   CApath: /etc/ssl/certs
 * TLSv1.3 (OUT), TLS handshake, Client hello (1):
-* TLSv1.3 (IN), TLS handshake, Server hello (2):
-* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
-* TLSv1.3 (IN), TLS handshake, Certificate (11):
-* TLSv1.3 (OUT), TLS alert, unknown CA (560):
-* SSL certificate problem: unable to get local issuer certificate
+* TLSv1.3 (IN), TLS alert, Server hello (2):
+* error:14094438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error
+* stopped the pause stream!
 * Closing connection 0
-curl: (60) SSL certificate problem: unable to get local issuer certificate
-More details here: https://curl.haxx.se/docs/sslcerts.html
-
-curl failed to verify the legitimacy of the server and therefore could not
-establish a secure connection to it. To learn more about this situation and
-how to fix it, please visit the web page mentioned above.
+curl: (35) error:14094438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error
 ```
 
 
