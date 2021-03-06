@@ -27,14 +27,14 @@ This example is based on [Nick Jackson's MTLS Example GitHub repo](https://githu
 
 ### 1. Generate Root CA, Intermediate CA, server and client certificate
 
-1. Prepare all certificates.   
+1. Cleaning.   
 
 ```sh
 $ cd mtls-apps-examples/2-hello.go
 $ ./openssl_gen_certs.sh cleanup
 ```
 
-2. Generate all certificates for the `localhost` domain with the passphrase `secret`.
+2. Generate all certificates needed for the `localhost` domain with the passphrase `secret`.
 
 > You can use other different domain rather `localhost`, if so, that domain must be able to resolve through the available DNS server. If you don't have a DNS server, a workaround is adding that domain name to `/etc/hosts` file.
 
@@ -95,7 +95,7 @@ $ tree .
 
 ### 2. Test One-way TLS
 
-1. Run the microservice.   
+#### 1. Run the microservice.   
 
 ```sh
 $ go version
@@ -104,9 +104,10 @@ go version go1.13.8 linux/amd64
 $ go run -v hello.go -domain localhost
 ```
 
-2. Call the microservice.   
+#### 2. From other terminal call the microservice.   
 
 ```sh
+$ cd mtls-apps-examples/2-hello.go
 $ curl -i --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:9443/
 
 HTTP/2 200 
@@ -121,13 +122,13 @@ The `2_intermediate/certs/ca-chain.cert.pem` file contains Root and Intermediate
 
 ### 3. Test Two-way TLS (Mutual TLS authentication)
 
-1. Start the microservice.   
+#### 1. Start the microservice with MTLS enabled.   
 
 ```sh
 $ go run -v hello.go -domain localhost -mtls true
 ```
 
-2. Call the microservice.   
+#### 2. Call the microservice (using client private key).   
 
 Call the endpoint providing the certificates generated for the client, for the server to validate the request the user must provide its certifcate and private key.
 
@@ -142,7 +143,7 @@ Enter PEM pass phrase:
 Hello World 
 ```
 
-You could pass to curl the passphrase used to encrypt the client private key through `curl --cert <certificate[:password]>`, in this way when calling through curl, it doesn't prompt for the passphrase. 
+You could pass to curl the passphrase used to encrypt the client private key through `curl --cert <certificate[:password]>`, in this way when calling through curl it doesn't prompt for the passphrase. 
 
 ```sh
 $ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
@@ -153,7 +154,10 @@ $ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
 Hello World 
 ```
 
-Also, you could get a `PKCS12` client file containing certificate and private key and avoid pass the private key through the `--key 4_client/private/localhost.key.pem`. Just execute this command:   
+#### 3. Call the microservice (using client PKCS12 - key-pair).  
+
+We can use a `PKCS12` client file containing certificate and its private key, and avoid pass the private key through the `--key 4_client/private/localhost.key.pem` parameter. 
+So, let's get the PKCS12 file:   
 
 ```sh
 $ openssl pkcs12 -export \
@@ -164,25 +168,30 @@ $ openssl pkcs12 -export \
           -passout pass:secret
 ```
 
-If you call the microservice without providing the client certificate, you will have error.
+Now, let's convert PKCS12 in DER format to PEM format.
 
-```bash
+```sh
+$ openssl pkcs12 \
+          -in 4_client/certs/localhost.p12 \
+          -out 4_client/certs/localhost.p12.pem \
+          -passin pass:secret \
+          -passout pass:secret
+```
+
+And finally, let's to call the service without client private key (`4_client/private/localhost.key.pem`) and without certificate (`4_client/certs/localhost.cert.pem`) but using PKCS12 in PEM format only.
+
+```sh
 $ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+        --cert 4_client/certs/localhost.p12.pem:secret \
         https://localhost:9443/
 
-curl: (16) OpenSSL SSL_write: Broken pipe, errno 32
+Hello World 
 ```
 
-And in the microservices side you will have this error message:
-```sh
-...
-2021/02/17 21:48:07 http: TLS handshake error from 127.0.0.1:57786: tls: client didn't provide a certificate
-```
+#### 4. Testing MTLS using a browser.   
 
-3. Testing using a browser.   
-
-Like the [Greeting Java microservice](../1-greeting-java), you must install the client certificate and its corresponding private key in the browser, also must be installed the certificate chain and trust on those.
-The difficult is convert all those client certificate and private key, and certificate chain in a format that you browser support. Note that `open_gen_certs.sh` has generated all keys and certificates in `PEM` format, however the above openssl command already joined the client certificate and the private key in a `PKCS12` file. Only you need to import to your browser, during this process the browser will ask for the passphrase, and that is all.
+Like the [Greeting Java microservice](../1-greeting-java), you must install the client certificate and its corresponding private key in the browser, also must be installed the certificate chain and trust on those.   
+The difficult is convert all those client certificate and private key, and certificate chain in a format that you browser support. Note that `openssl_gen_certs.sh` has generated all keys and certificates in `PEM` format, however the above openssl command already joined the client certificate and the private key in a `PKCS12` file. Only you need to import it to your browser, during this process the browser will ask for the passphrase, and that is all.
 
 
 ## References
