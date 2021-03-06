@@ -13,9 +13,7 @@ Caddy as sidecar proxy for any kind of microservices to manage MTLS and Certific
 * Docker
 
 
-## Steps
-
-### 1. Install Caddy (Proxy/Sidecar) and CA
+## Preparation
 
 Caddy can be installed as a Linux service, the [binary can be downloaded](https://caddyserver.com/download) and embedded in applications or use it in a [Docker Container](https://hub.docker.com/_/caddy). This latest option is the way we are going to use along this Lab.
 
@@ -56,8 +54,11 @@ caddy                  latest    88588539bb90   3 hours ago    39.5MB
 codercom/code-server   latest    681a48e7bf50   3 weeks ago    838MB
 wettyoss/wetty         latest    06a426b25e16   4 months ago   148MB
 ```
+## Examples
 
-### 2. Checking basic usage with Caddy in docker
+### 1. Checking basic usage with Caddy in docker
+
+#### 1. Serving static files with Caddy on HTTP.
 
 Caddy is able to server static files and work as proxy at the same time. Lets check if Caddy using this feature: 
 ```sh
@@ -67,7 +68,34 @@ $ docker run -d -p 8001:80 \
     caddy
 ```
 
-Checking if Caddy is serving `site/hola.html` on the port `8001`:
+#### 2. Exploring Caddy docker process.
+```sh
+$ docker exec -it caddy2 ls -la /config/caddy/
+total 12
+drwxr-xr-x    2 root     root          4096 Mar  6 15:58 .
+drwxr-xr-x    3 root     root          4096 Mar  6 15:58 ..
+-rw-------    1 root     root           184 Mar  6 16:07 autosave.json
+
+$ docker exec -it caddy2 ls -la /data/caddy/
+total 8
+drwxr-xr-x    2 root     root          4096 Mar  6 08:10 .
+drwxr-xr-x    3 root     root          4096 Mar  6 11:31 ..
+
+$ docker exec -it caddy2 ls -la /usr/share/caddy/
+total 28
+drwxr-xr-x    1 root     root          4096 Mar  6 16:02 .
+drwxr-xr-x    1 root     root          4096 Mar  6 08:10 ..
+-rw-r--r--    1 1001     root            12 Mar  6 15:12 hola.html
+-rw-r--r--    1 root     root         12226 Mar  6 08:10 index.html
+```
+
+* `/config/caddy/` - It is the directory where the Caddy configuration is saved.
+* `/data/caddy/` - It is the directory where the Caddy data (certificates, CA, etc.) is saved.
+* `/usr/share/caddy/` - It is the directory where the static web page is saved.
+
+#### 3. Checking if Caddy is serving static web page on the port `8001`:
+
+
 ```sh
 $ curl -i http://localhost:8001/hola.html
 
@@ -83,17 +111,13 @@ Date: Sat, 06 Mar 2021 15:19:21 GMT
 Hola amigo!
 ```
 
-Now, run another Caddy instance over the `8002` port and overwritting its `/etc/caddy/Caddyfile` config file: 
-```sh
-$ docker run -d -p 8002:80 \
-    -v $PWD/1-basic/hola.html:/usr/share/caddy/hola.html \
-    -v $PWD/1-basic/Caddyfile:/etc/caddy/Caddyfile \
-    -v caddy_data:/data \
-    --name caddy2 \
-    caddy
-```
+And from a browser:
 
-Checking the Caddy docker processes are running:
+![](../img/mtls-3-caddy-1-chrome.png)
+
+
+#### 4. Checking the running Caddy docker processes
+
 ```sh
 $ docker ps
 
@@ -107,98 +131,100 @@ Remove recently created container:
 $ docker rm -f caddy1 caddy2
 ```
 
-### 2. Checking automatic TLS with Caddy in docker
+### 2. Advanced Caddy configurations.
 
 
-```sh
-## $ mkdir site caddy_data caddy_config
+#### 1. Overwriting the Caddy config file
 
-$ docker run -d -p 82:80 -p 442:443 \
-    -v $PWD/site:/srv \
-    -v $PWD/caddy_data:/data \
-    -v $PWD/caddy_config:/config \
-    --name caddy-82 \
-    caddy caddy file-server --domain $HOSTNAME
-
-
-$ docker run -d -p 84:80 -p 444:443 \
-    -v $PWD/site:/srv \
-    -v $PWD/caddy_data:/data \
-    -v $PWD/caddy_config:/config \
-    --name caddy-84 \
-    caddy caddy file-server --domain funny-panda.devopsplayground.org
-
-$ docker run -d -p 85:80 -p 8445:443 \
-    -v $PWD/site/index.html:/usr/share/caddy/index.html \
-    --name caddy-85 \
-    caddy caddy file-server --domain $HOSTNAME
-
-docker run -d -p 8443:443 \
-    -v $PWD/site/index.html:/usr/share/caddy/index.html \
-    --name caddy-86 \
-    caddy caddy file-server --domain $HOSTNAME
-```
-
-Checking the caddy docker process:
-```sh
-$docker ps
-
-CONTAINER ID   IMAGE                         COMMAND                  CREATED              STATUS              PORTS                                                NAMES
-bd8c3af50661   caddy                         "caddy file-server -…"   6 seconds ago        Up 5 seconds        2019/tcp, 0.0.0.0:82->80/tcp, 0.0.0.0:442->443/tcp   caddy-82
-e1a87e6e508d   caddy                         "caddy run --config …"   About a minute ago   Up About a minute   443/tcp, 2019/tcp, 0.0.0.0:81->80/tcp                caddy-81
-```
-
-Checking HTTP and TLS:  
+Running Caddy instance over the `8002` port, overwriting the Caddy config file (`/etc/caddy/Caddyfile`) and mounting `/data` and `/config` folders: 
 
 ```sh
-$ curl -iv http://$HOSTNAME:82
+$ cat $PWD/1-basic/Caddyfile.example1
 
-* Rebuilt URL to: http://playground:82/
-*   Trying 10.0.10.83...
-* TCP_NODELAY set
-* Connected to playground (10.0.10.83) port 82 (#0)
-> GET / HTTP/1.1
-> Host: playground:82
-> User-Agent: curl/7.58.0
-> Accept: */*
-> 
-< HTTP/1.1 308 Permanent Redirect
-HTTP/1.1 308 Permanent Redirect
-< Connection: close
-Connection: close
-< Location: https://playground/
-Location: https://playground/
-< Server: Caddy
-Server: Caddy
-< Date: Sat, 06 Mar 2021 11:54:40 GMT
-Date: Sat, 06 Mar 2021 11:54:40 GMT
-< Content-Length: 0
-Content-Length: 0
+:80
 
-< 
-* Closing connection 0
+# Set this path to your site's directory.
+root * /usr/share/caddy
+
+# Enable the static file server.
+file_server
 ```
-Since Caddy has generated succesfully a TLS certificate for $HOSTNAME, Caddy is redirecting the traffic to the HTTPS site.  
-Let's call to the HTTPS site:  
+
 ```sh
-$ curl -iv https://$HOSTNAME:442
+$ docker run -d -p 8002:80 \
+    -v $PWD/1-basic/hola.html:/usr/share/caddy/hola.html \
+    -v $PWD/1-basic/Caddyfile.example1:/etc/caddy/Caddyfile \
+    -v caddy_data:/data \
+    -v caddy_config:/config \
+    --name caddy2 \
+    caddy
 
-* Rebuilt URL to: https://playground:442/
-*   Trying 10.0.10.83...
-* TCP_NODELAY set
-* Connected to playground (10.0.10.83) port 442 (#0)
-* ALPN, offering h2
-* ALPN, offering http/1.1
-* successfully set certificate verify locations:
-*   CAfile: /etc/ssl/certs/ca-certificates.crt
-  CApath: /etc/ssl/certs
-* TLSv1.3 (OUT), TLS handshake, Client hello (1):
-* TLSv1.3 (IN), TLS alert, Server hello (2):
-* error:14094438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error
-* stopped the pause stream!
-* Closing connection 0
-curl: (35) error:14094438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error
+$ curl http://localhost:8002/hola.html
+
+Hola amigo!
 ```
+
+
+### 3. Checking automatic TLS with Caddy in docker
+
+We are going to configure Caddy as a Proxy (no as `file_server`) listening on `9080` to expose Kuard running `9070` port.
+
+#### 1. Running Kuard
+
+```sh
+$ docker run -d -p 9070:8080 \
+    --name kuard \
+    gcr.io/kuar-demo/kuard-amd64:1
+
+$ curl localhost:9070/healthy
+
+ok
+```
+And from your browser, you should see this:
+
+![](../img/mtls-3-caddy-2-kuard.png)
+
+
+#### 2. Update Caddyfile
+
+```sh
+$ cat $PWD/1-basic/Caddyfile.example2
+
+:9080
+
+# Set this path to your site's directory.
+root * /usr/share/caddy
+
+# Another common task is to set up a reverse proxy:
+reverse_proxy localhost:9070
+```
+
+#### 3. Running Caddy as Proxy
+
+```sh
+$ docker run -d -p 9090:9080 \
+    -v $PWD/1-basic/Caddyfile.example2:/etc/caddy/Caddyfile \
+    -v caddy_data:/data \
+    -v caddy_config:/config \
+    --name caddy3 \
+    caddy
+```
+
+Checking the caddy docker processes:
+```sh
+$ docker ps -a
+
+```
+
+#### 4. Checking Kuard being proxied through Caddy.
+
+From your local computer:
+
+```sh
+$ curl http://funny-panda.devopsplayground.org:9090/:9070/healthy
+```
+
+![](../img/mtls-3-caddy-2-kuard.png)
 
 
 ### 3. Test Two-way TLS (Mutual TLS authentication)
@@ -207,4 +233,6 @@ TBC
 
 ## References
 
-* tbc
+* JSON schema generator for Caddy v2
+   - https://github.com/abiosoft/caddy-json-schema
+
