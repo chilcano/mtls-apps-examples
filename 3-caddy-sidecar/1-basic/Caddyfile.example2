@@ -1,7 +1,5 @@
-:9080
+localhost:9080
 
-# Set this path to your site's directory.
-root * /usr/share/caddy
-
-# Another common task is to set up a reverse proxy:
-reverse_proxy localhost:9070
+#reverse_proxy localhost:9070
+#reverse_proxy kuard:9070
+reverse_proxy kuard:8080
