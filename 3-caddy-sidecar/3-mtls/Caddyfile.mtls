@@ -1,0 +1,16 @@
+{
+    debug
+}
+(mTLS) {
+    tls {
+        client_auth {
+            mode require_and_verify
+            trusted_ca_cert_file /config/custom-certs/ca-chain.cert.pem
+        }
+    }
+}
+
+funny-panda.devopsplayground.org:9081 {
+    reverse_proxy kuard:8080
+    import mTLS
+}

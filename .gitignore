@@ -44,6 +44,10 @@ build/
 3_application/
 4_client/
 
+### sample 3
+caddy_config/
+caddy_data/
+
 ### sample 4
 */.step
 *.tfstate*
