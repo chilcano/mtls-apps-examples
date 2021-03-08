@@ -204,7 +204,7 @@ And from your browser, you should see this:
 $ nano $PWD/1-basic/Caddyfile.example2
 ```
 
-```json
+```sh
 localhost:9080
 
 reverse_proxy localhost:9070
@@ -248,9 +248,9 @@ content-length: 0
 date: Sun, 07 Mar 2021 16:45:15 GMT
 ```
 
-From your local computer using a browser:
-![](../img/mtls-3-caddy-3-kuard-caddy-proxy.png)
+From your local computer using a browser:  
 
+![](../img/mtls-3-caddy-3-kuard-caddy-proxy.png)
 
 Open other Wetty terminal in your remote workstation and tail the caddy logs to check what is happening:
 
@@ -260,7 +260,7 @@ $ sudo tail -f  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.
 ```
 
 You should see below events:
-```json
+```sh
 {
   "log": "{\"level\":\"info\",\"ts\":1615135216.280893,\"logger\":\"http\",\"msg\":\"enabling automatic HTTP->HTTPS redirects\",\"server_name\":\"srv0\"}\n",
   "stream": "stderr",
@@ -338,7 +338,7 @@ Checking the `lab3-net` Docker Network. You should see the Subnet addresses, the
 $ docker network inspect lab3-net | jq
 ```
 
-```json
+```sh
 [
   {
     "Name": "lab3-net",
@@ -405,7 +405,7 @@ The above information means that `caddy3` and `kuard` containers are part of sam
 #### 6. Trying to call Kuard through Proxy.
 
 We need to do make a slight change to `$PWD/1-basic/Caddyfile.example2`.
-```json
+```sh
 {
     debug
 }
@@ -432,7 +432,7 @@ $ docker run -d -p 9090:9080 \
 You will note the above command will create `caddy3` container and will add it into the `lab3-net` docker network.  
 
 Check the `caddy3` docker logs:   
-```json
+```sh
 $ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
 
 $ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq 
@@ -605,7 +605,7 @@ And if you check the `caddy3` docker logs, you will see the error:
 ```sh
 $ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq 
 ```
-```json
+```sh
 {
   "log": "{\"level\":\"debug\",\"ts\":1615155607.5234804,\"logger\":\"http.stdlib\",\"msg\":\"http: TLS handshake error from 83.54.18.132:34204: no certificate available for 'funny-panda.devopsplayground.org'\"}\n",
   "stream": "stderr",
@@ -621,7 +621,7 @@ Then, let's update `caddy3` and get a proper certificate for `funny-panda.devops
 #### 1. Update Caddyfile to use the FQDN.
 
 Add a slight change to `$PWD/1-basic/Caddyfile.example2`.
-```json
+```sh
 {
     debug
 }
@@ -648,7 +648,7 @@ $ docker run -d -p 9090:9080 \
 
 #### 3. Check the Caddy logs.
 
-```json
+```sh
 $ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
 
 $ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq 
@@ -757,7 +757,7 @@ b564bb82a281   none             null      local
 b52f92249fab   playground-net   bridge    local
 ```
 
-```json
+```sh
 $ docker network inspect lab3-net | jq
 
 [
@@ -843,7 +843,7 @@ $ cd ../3-caddy-sidecar/
 $ nano $PWD/1-basic/Caddyfile.mtls
 ```
 
-```json
+```sh
 {
     debug
 }
@@ -884,7 +884,7 @@ $ CONTAINER_ID4=$(docker inspect --format="{{.Id}}" caddy4)
 $ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID4}/${CONTAINER_ID4}-json.log | jq 
 ```
 
-```json
+```sh
 [...]
 
 ```
@@ -916,7 +916,7 @@ $ CONTAINER_ID4=$(docker inspect --format="{{.Id}}" caddy4)
 $ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID4}/${CONTAINER_ID4}-json.log | jq 
 ```
 
-```json
+```sh
 [...]
 {
   "log": "{\"level\":\"info\",\"ts\":1615165875.9552908,\"msg\":\"serving initial configuration\"}\n",
@@ -955,7 +955,7 @@ The server will ask to send the client certificate:
 
 And finally, you should see the `caddy4` logs:
 
-```json
+```sh
 [...]
 {
   "log": "{\"level\":\"debug\",\"ts\":1615167728.540429,\"logger\":\"http.stdlib\",\"msg\":\"http: TLS handshake error from 83.54.18.132:40016: EOF\"}\n",
