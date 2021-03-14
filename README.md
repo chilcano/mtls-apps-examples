@@ -40,10 +40,10 @@ If you have `<Panda-Type>` assigned to registration, then you should have access
 If you don't like to work with vanilla prompt, you can install FancyGit and get a fancy prompt, only run the command below in your Wetty.
 
 ```sh
-$ curl -sS https://raw.githubusercontent.com/diogocavilha/fancy-git/master/install.sh | sh
-$ . ~/.bashrc
-$ fancygit human
-$ . ~/.bashrc
+curl -sS https://raw.githubusercontent.com/diogocavilha/fancy-git/master/install.sh | sh
+. ~/.bashrc
+fancygit human
+. ~/.bashrc
 ```
 
 ### Install extra tools
@@ -51,5 +51,5 @@ $ . ~/.bashrc
 You **probably don't need it**, if so, run the below script and you will get installed Java 11, Maven and Go.
 
 ```sh
-$ source <(curl -s https://raw.githubusercontent.com/chilcano/how-tos/master/src/devops_playground_tools_install.sh) 
+source <(curl -s https://raw.githubusercontent.com/chilcano/how-tos/master/src/devops_playground_tools_install.sh) 
 ```

@@ -21,8 +21,10 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 Check the initial confiration file. That file is locate here `src/main/resources/application.yml` and you should have this configuration:  
 
 ```yaml
-$ cat src/main/resources/application.yml
-
+cat src/main/resources/application.yml
+```
+   
+```yaml
 server:
   port: 9090
 ``` 
@@ -35,15 +37,16 @@ server:
 > You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 
 ```sh
-$ cd mtls-apps-examples/1-greeting-java 
-$ mvn clean spring-boot:run
+cd mtls-apps-examples/1-greeting-java 
+
+mvn clean spring-boot:run
 ``` 
 
 #### 3. Calling the REST service.  
 
 In other terminal, execute this:
 ```sh
-$ curl -i http://localhost:9090/greeting
+curl -i http://localhost:9090/greeting
 ```
 
 #### 4. It should give you the following response:  
@@ -67,8 +70,10 @@ Just type `Ctrl + C`.
 
 Only update `src/main/resources/application.yml` with the next configuration:  
 ```yaml
-$ nano src/main/resources/application.yml
-
+nano src/main/resources/application.yml
+```
+   
+```yaml
 server:
   port: 9443
   ssl:
@@ -78,7 +83,7 @@ server:
 #### 2. Restart the REST service so that it can apply the changes.   
 
 ```sh
-$ mvn clean spring-boot:run
+mvn clean spring-boot:run
 ``` 
 
 You will get the following error:
@@ -101,7 +106,7 @@ Caused by: java.lang.IllegalArgumentException: Resource location must not be nul
 
 Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore) file as repository of public-key certificates and asymmetric private keys. Then, to create a keystore with a public and private key, execute the following command in your terminal:
 ```sh
-$ keytool -v \
+keytool -v \
         -genkeypair \
         -dname "CN=Server (MTLS for Java Microservice),OU=DevOps Playground,O=ECS,C=UK" \
         -keystore src/main/resources/server_identity.p12 \
@@ -123,8 +128,10 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 
 Once generated the TLS certificate, you will need to update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
 ```yaml
-$ nano src/main/resources/application.yml
+nano src/main/resources/application.yml
+```
 
+```yaml
 server:
   port: 9443
   ssl:
@@ -137,22 +144,22 @@ server:
 #### 4. Run the REST service and test the One-way TLS connection.   
 
 ```sh
-$ mvn clean spring-boot:run
+mvn clean spring-boot:run
 ```
 
 In other terminal execute this:
 ```sh
-$ curl --insecure -v https://localhost:9443/greeting
+curl --insecure -v https://localhost:9443/greeting
 
 ## alternatively with '-k' option
-$ curl -k https://localhost:9443/greeting
+curl -k https://localhost:9443/greeting
 
 {"id":1,"content":"Hello, World!"}
 ```
 
 Now, if we remove the `--insecure` or `-k` we will get this error:
 ```sh
-$ curl https://localhost:9443/greeting
+curl https://localhost:9443/greeting
 
 curl: (60) SSL certificate problem: unable to get local issuer certificate
 More details here: https://curl.haxx.se/docs/sslcerts.html
@@ -170,7 +177,7 @@ how to fix it, please visit the web page mentioned above.
 To avoid this error, you need to get the certificate(s) of the server and store it in trusted CA certificate store in your server and/or browser.  
 You can get the server certificate with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
 ```sh
-$ keytool -v \
+keytool -v \
     -exportcert \
     -file src/main/resources/server.crt \
     -alias server \
@@ -183,7 +190,7 @@ Certificate stored in file <src/main/resources/server.crt>
 
 Now, install `src/main/resources/server.crt` in trusted CA certificate store that curl uses, once done, you will be able to call the REST service without problems.  
 ```sh
-$ curl --cacert src/main/resources/server.crt \
+curl --cacert src/main/resources/server.crt \
        --capath /etc/ssl/certs/ \
         https://localhost:9443/greeting
 ```
@@ -221,12 +228,12 @@ Once installed as trusted CA in your browser, reload your browser and you will s
 At this point you are able to accept the risk and proceed to use the REST service. But, if you don't want it would generate a new server certificate with a proper FQDN. Only follow below steps: 
 
 ```sh
-$ rm -rf src/main/resources/server*
+rm -rf src/main/resources/server*
 ```
 
 Now, generate a new server certificate (and private key) using your assigned `Panda` (FQDN). Note this parameter `SubjectAlternativeName:c=DNS:funny-panda.devopsplayground.org,DNS:localhost,IP:127.0.0.1`:
 ```sh
-$ keytool -v \
+keytool -v \
         -genkeypair \
         -dname "CN=Server Funny-Panda,OU=DevOps Playground,O=ECS,C=UK" \
         -keystore src/main/resources/server_identity.p12 \
@@ -244,7 +251,7 @@ $ keytool -v \
 
 Get the new server certificate (`server_fqdn.crt`) to be downloaded or just copy the PEM format from your browser like you did above. 
 ```sh
-$ keytool -v \
+keytool -v \
     -exportcert \
     -file src/main/resources/server_fqdn.crt \
     -alias server \
@@ -269,9 +276,10 @@ You can get this by configuring the server (REST service) that you also want to 
 
 #### 1. Update the REST service (server) properties in `src/main/resources/application.yml`. 
 
-```yaml
-$ nano src/main/resources/application.ym
 
+Update `nano src/main/resources/application.ym` with below configuration:
+
+```yaml
 server:
   port: 9443
   ssl:
@@ -286,17 +294,17 @@ server:
 
 Check if you have `server_identity.p12` and `server.crt` or `server_fqdn.crt`.
 ```sh
-$ ll src/main/resources/
+ll src/main/resources/
 ```
 
 Clean and run the server.
 ```sh
-$ mvn clean spring-boot:run
+mvn clean spring-boot:run
 ```
 
 In other terminal execute curl. Using `server.crt `or `server_fqdn.crt` doesn't matter because we are going to use the `-k` flag to avoid the hostname validation, which is not the purpose of this step.
 ```sh
-$ curl -k --cacert src/main/resources/server_fqdn.crt https://localhost:9443/greeting
+curl -k --cacert src/main/resources/server_fqdn.crt https://localhost:9443/greeting
 
 curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
 ```
@@ -309,7 +317,7 @@ This indicates that the certificate of the client is not valid because there is 
 We are going to use ``Java KeyTool` to create a new client self-signed certificate. Use the following command:
 
 ```sh
-$ keytool -v \
+keytool -v \
         -genkeypair \
         -dname "CN=Client (MTLS for Java Microservice),OU=DevOps Playground,O=ECS,C=UK" \
         -keystore src/main/resources/client_identity.p12 \
@@ -333,7 +341,7 @@ Once the `client_identity.p12` (private key and public key certificate) has been
 
 The `client_identity.p12` file containts the key-pair (private and public key) and the public key certificate. We need run the below command to get only the publick key certificate.
 ```sh
-$ keytool -v \
+keytool -v \
         -exportcert \
         -file src/main/resources/client.crt \
         -alias client \
@@ -346,7 +354,7 @@ $ keytool -v \
 
 The `truststore`, in `JKS` format, file must contain all certificates that are trusted, and since we have 2 self-signed certificates (client and server) in this Lab, the `truststore` will be the same for the client and server.
 ```sh
-$ keytool -v \
+keytool -v \
         -importcert \
         -file src/main/resources/client.crt \
         -alias client \
@@ -377,7 +385,7 @@ server:
 > Then, the next `keytool` command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that **next command is not necessary**.   
 
 ```sh
-$ keytool -importkeystore \
+keytool -importkeystore \
         -srckeystore src/main/resources/client_identity.jks \
         -destkeystore src/main/resources/client_identity.p12 \
         -srcstoretype JKS \
@@ -393,7 +401,7 @@ $ keytool -importkeystore \
 
 Get the `PEM` file from `client_identity.p12` that holds only the client private key.
 ```sh
-$ openssl pkcs12 \
+openssl pkcs12 \
           -in src/main/resources/client_identity.p12 \
           -out src/main/resources/client_identity.pem \
           -passin pass:secret \
@@ -405,12 +413,12 @@ $ openssl pkcs12 \
 
 Restart the server:
 ```sh
-$ mvn clean spring-boot:run
+mvn clean spring-boot:run
 ```
 
 In other terminal execute curl.
 ```sh
-$ curl --cacert src/main/resources/server_fqdn.crt \
+curl --cacert src/main/resources/server_fqdn.crt \
        --key src/main/resources/client_identity.pem \
        --cert src/main/resources/client.crt \
        https://localhost:9443/greeting
@@ -428,7 +436,7 @@ how to fix it, please visit the web page mentioned above.
 The above error happens because the server certificate's SAN doesn't match the REST service's domain name. Lets bypass this error for a moment and use `-k` flag to check if the REST service and MTLS are working.
 
 ```sh
-$ curl -k --cacert src/main/resources/server_fqdn.crt \
+curl -k --cacert src/main/resources/server_fqdn.crt \
        --key src/main/resources/client_identity.pem \
        --cert src/main/resources/client.crt \
        https://localhost:9443/greeting
@@ -443,7 +451,7 @@ Enter PEM pass phrase:
 To take advantage of `--cert <certificate[:password]>` flag and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and use all together according the previous flag (`--cert <certificate[:password]>`). To use it, only follow the next command:
 
 ```sh
-$ openssl pkcs12 \
+openssl pkcs12 \
           -in src/main/resources/client_identity.p12 \
           -out src/main/resources/client_identity.pem \
           -passin pass:secret \
@@ -452,10 +460,12 @@ $ openssl pkcs12 \
 
 Finally, execute curl again passing the passphrase using the aforementioned flag `--cert <certificate[:password]>`:   
 ```sh
-$ curl -k --cacert src/main/resources/server_fqdn.crt \
+curl -k --cacert src/main/resources/server_fqdn.crt \
        --cert src/main/resources/client_identity.pem:secret \
        https://localhost:9443/greeting
-
+```
+   
+```json
 {"id":3,"content":"Hello, World!"}
 ```
 
