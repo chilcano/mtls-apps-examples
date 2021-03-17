@@ -24,7 +24,7 @@ Also make sure the owner of all files and directories under `workdir` is `$USER`
 You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 
 
-### I) Saying greeting (without encryption in transit)
+### I. Saying greeting (without encryption in transit)
 
 #### 1. Check initial configuration of REST service.
 
@@ -70,7 +70,7 @@ Date: Tue, 16 Feb 2021 13:41:15 GMT
 Just type `Ctrl + C`.   
 
 
-### II) HTTP over TLS (One-way TLS)
+### II. HTTP over TLS (One-way TLS)
 
 #### 1. Generate the server certificate.   
 
@@ -180,52 +180,14 @@ Install CA certificates in the trusted CA certificate store and make available t
 * [Daniel Stenberg's blog - Get the CA Cert for curl](https://daniel.haxx.se/blog/2018/11/07/get-the-ca-cert-for-curl/)
 
 
-### III) Enabling Mutual TLS Authentication (Two-way TLS)
+### III. Enabling Mutual TLS Authentication (Two-way TLS)
 
 The configuration of MTLS (Two-way TLS) in the server will require a new certificate for the authentication of the client. 
 This configuration will force the client (curl, your browser or any proper HTTP client) to identify itself using a certificate, and in that way, the server (REST service) 
 can also validate the identity of the client and whether or not it is a trusted one. 
 You can get this by configuring the server (REST service) that you also want to validate the client with the property `client-auth` in the `src/main/resources/application.yml` file.   
 
-#### 1. Update the REST service (server) properties in `src/main/resources/application.yml`. 
-
-
-Update `nano src/main/resources/application.ym` with below configuration:
-
-```yaml
-server:
-  port: 9443
-  ssl:
-    enabled: true
-    key-store: classpath:server_identity.p12
-    key-password: secret
-    key-store-password: secret
-    client-auth: need                             ## require client authn
-``` 
-
-#### 2. Restart the REST service and check the MTLS configuration.   
-
-Check if you have `server_identity.p12` and `server.crt` or `server_fqdn.crt`.
-```sh
-ll src/main/resources/
-```
-
-Clean and run the server.
-```sh
-mvn clean spring-boot:run
-```
-
-In other terminal execute curl. Using `server.crt `or `server_fqdn.crt` doesn't matter because we are going to use the `-k` flag to avoid the hostname validation, which is not the purpose of this step.
-```sh
-curl -k --cacert src/main/resources/server_fqdn.crt https://localhost:9443/greeting
-
-curl: (56) OpenSSL SSL_read: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0
-```
-
-Running the curl client will fail with the following error message: `error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate, errno 0`.   
-This indicates that the certificate of the client is not valid because there is no certificate at all. So, let's create one.
-
-#### 3. Generating a client certificate.  
+#### 1. Generating a client certificate.  
 
 We are going to use ``Java KeyTool` to create a new client self-signed certificate. Use the following command:
 
@@ -250,7 +212,7 @@ keytool -v \
 
 Once the `client_identity.p12` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.p12`.
 
-#### 4. Extract the client certificate from `client_identity.p12`.  
+#### 2. Extract the client certificate from `client_identity.p12`.  
 
 The `client_identity.p12` file containts the key-pair (private and public key) and the public key certificate. We need run the below command to get only the publick key certificate.
 ```sh
@@ -263,7 +225,7 @@ keytool -v \
         -rfc 
 ```
 
-#### 5. Create the server `truststore` with the client certificate.   
+#### 3. Create the server `truststore` with the client certificate.   
 
 The `truststore`, in `JKS` format, file must contain all certificates that are trusted, and since we have 2 self-signed certificates (client and server) in this Lab, the `truststore` will be the same for the client and server.
 ```sh
@@ -276,7 +238,14 @@ keytool -v \
         -noprompt
 ```
 
-#### 6. Update the server `src/main/resources/application.yml` file to be aware of `server_truststore.jks`.   
+#### 4. Update the server configuration file.
+
+
+Update the server configuration:
+
+```yaml
+nano src/main/resources/application.ym
+```
 
 ```yaml
 server:
@@ -291,7 +260,7 @@ server:
     trust-store-password: secret
 ``` 
 
-#### 7. Get the client private key in PEM format. 
+#### 5. Get the client private key in PEM format. 
 
 > Since `cURL` only sopports `PEM`, `DER` and `ENG` and all `*.crt` files in format `PEM` and doesn't support `Java KeyStore` files containing key material (`*.jks`). We need to extract the client private key in `PEM` format from `client_identity.p12` file.
 > Only if that is the case, we need to convert the `JKS` to ``PKCS12` and then extract the private key from the `PKCS12`. 
@@ -322,7 +291,7 @@ openssl pkcs12 \
           -nocerts
 ```
 
-#### 8. Finally, you are able to call to the REST service to test MTLS.   
+#### 6. Finally, you are able to call to the REST service to test MTLS.   
 
 Restart the server:
 ```sh
@@ -381,32 +350,6 @@ curl -k --cacert src/main/resources/server_fqdn.crt \
 ```json
 {"id":3,"content":"Hello, World!"}
 ```
-
-#### 10. MTLS from the browser.   
-
-Fist of all, download `server_fqdn.crt` and `client_identity.p12`, and install both in the Certificate Store of your Browser. Installing the `server_fqdn.crt` we are trusting in the server, while installing the `client_identity.p12` using its passphrase we are certifying that we are the only ones who have the identity of the client.
-
-To download both files you can use the Code-Server (Web IDE based on VS Code). See below image:
-
-![](../img/mtls-java-1-vs-code-server.png)
-
-Now, we are ready to call the REST service with MTLS (Two-way TLS) through our browser and using a FQDN.
-
-![](../img/mtls-java-1-chrome-fqdn-2-way-1.png)
-
-You will immediately be asked to select your client identity (`client_identity.p12` file that you previously installed)
-
-![](../img/mtls-java-1-chrome-fqdn-2-way-2.png)
-
-![](../img/mtls-java-1-chrome-fqdn-2-way-3.png)
-
-![](../img/mtls-java-1-chrome-fqdn-2-way-4.png)
-
-
-**Observation:**   
-By default, Chrome and Firefox can not stablish TLS truested communication with servers using certificates in localhost or running in your own LAN, however Chrome does have a flag for allowing untrusted certificates from the localhost origin. This option is available from the `chrome://flags/#allow-insecure-localhost` page. Once enabled, install in your browser the client PKCS12 file (`src/main/resources/client_identity.p12`) which contains the public-key certificate and private key protected by the `secret`, passphrase, and open the REST service `https://localhost:9443/greeting`. The browser will prompt to select the client identity to use during Mutual TLS authentication.
-
-![](../img/mtls-java-1-allow-insecure-localhost-in-chrome.png)  
 
 ## References
 
