@@ -72,7 +72,43 @@ Just type `Ctrl + C`.
 
 ### II) HTTP over TLS (One-way TLS)
 
-#### 1. Generate the server certificate.   
+#### 1. Enable One-way TLS.   
+
+Update `src/main/resources/application.yml` with the next configuration:  
+```sh
+nano src/main/resources/application.yml
+```
+   
+```yaml
+server:
+  port: 9443
+  ssl:
+    enabled: true
+``` 
+
+#### 2. Restart the REST service so that it can apply the changes.   
+
+```sh
+mvn clean spring-boot:run
+``` 
+
+You will get the following error:
+```sh
+Caused by: java.lang.IllegalArgumentException: Resource location must not be null
+        at org.springframework.util.Assert.notNull(Assert.java:201) ~[spring-core-5.3.3.jar:5.3.3]
+        at org.springframework.util.ResourceUtils.getURL(ResourceUtils.java:130) ~[spring-core-5.3.3.jar:5.3.3]
+        at org.springframework.boot.web.embedded.tomcat.SslConnectorCustomizer.configureSslKeyStore(SslConnectorCustomizer.java:129) ~[spring-boot-2.4.2.jar:2.4.2]
+        ... 16 common frames omitted
+```
+> **Important:**   
+>   
+> We are getting this message because the REST service (server) requires a keystore with the certificate of the REST service (server) to ensure that there is a secure connection with the outside world.  
+>  
+> To solve this, we are going to create a keystore with a public and private key for the REST service (server). The public key will be shared with users/clients so that they can encrypt the communication.  
+> The communication between both parties (user and server) can be decrypted with the private key of the REST service (server).  
+> The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
+
+#### 3. Generate the server certificate.   
 
 Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore) file as repository of public-key certificates and asymmetric private keys. Then, to create a keystore with a public and private key, execute the following command in your terminal:
 ```sh
@@ -96,14 +132,6 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 [Storing src/main/resources/server_identity.p12]
 ```
 
-> **Important:**   
->   
-> We have to create a keystore with a public and private key for the REST service (server). The public key will be shared with users/clients so that they can encrypt the communication.  
-> The communication between both parties (user and server) can be decrypted with the private key of the REST service (server).  
-> The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
-
-#### 2. Update the REST service onfiguration file.
-
 Once generated the TLS certificate, you will need to update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
 ```yaml
 nano src/main/resources/application.yml
@@ -119,13 +147,13 @@ server:
     key-store-password: secret
 ```
 
-#### 3. Run the REST service and test the One-way TLS connection.   
+#### 4. Run the REST service and test the One-way TLS connection.   
 
 ```sh
 mvn clean spring-boot:run
 ```
 
-In other Wetty Terminal execute this:
+In other terminal execute this:
 ```sh
 curl --insecure -v https://localhost:9443/greeting
 
@@ -146,12 +174,13 @@ curl failed to verify the legitimacy of the server and therefore could not
 establish a secure connection to it. To learn more about this situation and
 how to fix it, please visit the web page mentioned above.
 ```
-
 > **Important:**   
 >   
-> That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the server certificate.
+> That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the REST service certificate.
 
-To avoid this error, you need to get the certificate(s) of the server and store it in the trusted CA certificate store of your curl and/or browser.  
+![](../img/mtls-java-1-err-cert-authority-invalid.png)
+
+To avoid this error, you need to get the certificate(s) of the server and store it in trusted CA certificate store in your server and/or browser.  
 You can get the server certificate with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
 ```sh
 keytool -v \
@@ -165,19 +194,83 @@ keytool -v \
 Certificate stored in file <src/main/resources/server.crt>
 ```
 
-Now, install `src/main/resources/server.crt` in the trusted CA certificate store that curl uses.  
+Now, install `src/main/resources/server.crt` in trusted CA certificate store that curl uses, once done, you will be able to call the REST service without problems.  
 ```sh
 curl --cacert src/main/resources/server.crt \
        --capath /etc/ssl/certs/ \
         https://localhost:9443/greeting
 ```
+Install CA certificates in the trusted CA certificate store and make available to curl requires compile curl from source code. The process is explained in below links:
+* [curl website - SSL Certificate Verification](https://curl.se/docs/sslcerts.html)
+* [Daniel Stenberg's blog - Get the CA Cert for curl](https://daniel.haxx.se/blog/2018/11/07/get-the-ca-cert-for-curl/)
 
 Unfortunately curl still will show same error about `verify the legitimacy of the server` because, curl doesn't validate self-signed certificates, despite installing it in the CA certificate store. 
 However, you would bypass this using Browser instead of curl.
 
-Install CA certificates in the trusted CA certificate store and make available to curl requires compile curl from source code. The process is explained in below links:
-* [curl website - SSL Certificate Verification](https://curl.se/docs/sslcerts.html)
-* [Daniel Stenberg's blog - Get the CA Cert for curl](https://daniel.haxx.se/blog/2018/11/07/get-the-ca-cert-for-curl/)
+#### 5. Testing the One-way TLS connection using Chrome Browser.   
+
+Bypassing certificate validation is not a recommended option in many of the client libraries and applications. However, we can do it in our Browser, only for testing purposes.  
+We need to get access to our REST service from a fully qualified domain name (fqdn) and if you are lucky of using a remote workstation provided by **DevOps Playground Team**, then you that is easy.  
+First of all, you need to identify what is your assigned `Panda`, with that you can open this url (`https://<panda-type>.devopsplayground.org:9443/greeting`) in your browser.  
+In my case the REST service is available in this URL `https://funny-panda.devopsplayground.org:9443/greeting`. See below images:
+
+![](../img/mtls-java-1-chrome-1.png)
+
+You will see `NET::ERR_CERT_AUTHORITY_INVALID` message, that means you have to install and trust on the CA certificate, and since our server certificate is a self-signed certificate, only the server certificate is needed. You can download it from your remote workstation or copy it directly from browser. See next image.
+
+![](../img/mtls-java-1-chrome-2.png)   
+
+Once downloaded the server certificate, install it in your browser. See next images to how to install the certificate in Chrome.
+
+![](../img/mtls-java-1-chrome-3.png)   
+
+
+![](../img/mtls-java-1-chrome-4.png)  
+
+Once installed as trusted CA in your browser, reload your browser and you will see the `NET::ERR_CERT_COMMON_NAME_INVALID` message. It means you have trusted on a server certificate that doesn't match with the REST service's Domain Name. In other words, the server certificate has been generated for a REST service hosted on `localhost` and `127.0.0.1` and not on `funny-panda.devopsplayground.org`.   
+
+![](../img/mtls-java-1-chrome-5.png)
+
+At this point you are able to accept the risk and proceed to use the REST service. But, if you don't want it would generate a new server certificate with a proper FQDN. Only follow below steps: 
+
+```sh
+rm -rf src/main/resources/server*
+```
+
+Now, generate a new server certificate (and private key) using your assigned `Panda` (FQDN). Note this parameter `SubjectAlternativeName:c=DNS:funny-panda.devopsplayground.org,DNS:localhost,IP:127.0.0.1`:
+```sh
+keytool -v \
+        -genkeypair \
+        -dname "CN=Server Funny-Panda,OU=DevOps Playground,O=ECS,C=UK" \
+        -keystore src/main/resources/server_identity.p12 \
+        -storepass secret \
+        -keypass secret \
+        -keyalg RSA \
+        -keysize 2048 \
+        -alias server \
+        -validity 3650 \
+        -deststoretype PKCS12 \
+        -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
+        -ext ExtendedKeyUsage=serverAuth,clientAuth \
+        -ext SubjectAlternativeName:c=DNS:funny-panda.devopsplayground.org,DNS:localhost,IP:127.0.0.1
+```
+
+Get the new server certificate (`server_fqdn.crt`) to be downloaded or just copy the PEM format from your browser like you did above. 
+```sh
+keytool -v \
+    -exportcert \
+    -file src/main/resources/server_fqdn.crt \
+    -alias server \
+    -keystore src/main/resources/server_identity.p12 \
+    -storepass secret \
+    -rfc 
+```
+
+![](../img/mtls-java-1-chrome-6.png)
+
+Once installed the new server certificate with the FQDN as a trusted CA certificate in your browser, reload the REST service `Ctrl + C` and `mvn clean spring-boot:run`, open a Chrome incognito window with the REST service URL and you will not see any error message anymore.
+
+![](../img/mtls-java-1-chrome-7.png)
 
 
 ### III) Enabling Mutual TLS Authentication (Two-way TLS)
