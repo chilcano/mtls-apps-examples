@@ -25,6 +25,16 @@ This example is based on [Nick Jackson's MTLS Example GitHub repo](https://githu
 
 ## Steps
 
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](../) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](../):
+
+```sh
+cd $HOME/workdir/mtls-apps-examples/2-hello-go
+```
+
+Also make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work.  
+You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
+
+
 ### 1. Generate Root CA, Intermediate CA, server and client certificate
 
 1. Cleaning.   
@@ -190,7 +200,7 @@ Hello World
 
 #### 4. Testing MTLS using a browser.   
 
-Like the [Greeting Java microservice](../1-greeting-java), you must install the client certificate and its corresponding private key in the browser, also must be installed the certificate chain and trust on those.   
+We must install the client certificate and its corresponding private key in the browser, install the certificate chain and trust on those certificate.   
 The difficult is convert all those client certificate and private key, and certificate chain in a format that you browser support. Note that `openssl_gen_certs.sh` has generated all keys and certificates in `PEM` format, however the above openssl command already joined the client certificate and the private key in a `PKCS12` file. Only you need to import it to your browser, during this process the browser will ask for the passphrase, and that is all.
 
 

@@ -54,7 +54,17 @@ caddy                  latest    88588539bb90   3 hours ago    39.5MB
 codercom/code-server   latest    681a48e7bf50   3 weeks ago    838MB
 wettyoss/wetty         latest    06a426b25e16   4 months ago   148MB
 ```
-## Examples:
+## Examples
+
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](../) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](../):
+
+```sh
+cd $HOME/workdir/mtls-apps-examples/3-caddy-sidecar
+```
+
+Also make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work.  
+You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
+
 
 ### I. Basic usage with Caddy in Docker.
 

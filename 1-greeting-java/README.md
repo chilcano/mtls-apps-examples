@@ -14,7 +14,7 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ## Steps
 
-First of all, open 2 [Wetty Terminals](../) and in both go to the working directory for this example:
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](../) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](../):
 
 ```sh
 cd $HOME/workdir/mtls-apps-examples/1-greeting-java 
@@ -175,9 +175,8 @@ curl --cacert src/main/resources/server.crt \
 Unfortunately curl still will show same error about `verify the legitimacy of the server` because, curl doesn't validate self-signed certificates, despite installing it in the CA certificate store. 
 However, you would bypass this using Browser instead of curl.
 
-Install CA certificates in the trusted CA certificate store and make available to curl requires compile curl from source code. The process is explained in below links:
-* [curl website - SSL Certificate Verification](https://curl.se/docs/sslcerts.html)
-* [Daniel Stenberg's blog - Get the CA Cert for curl](https://daniel.haxx.se/blog/2018/11/07/get-the-ca-cert-for-curl/)
+Install CA certificates in the trusted CA certificate store and make available to curl requires compile curl from source code. The process is explained in below links in References section.
+
 
 
 ### III. Enabling Mutual TLS Authentication (Two-way TLS)
@@ -353,4 +352,6 @@ curl -k --cacert src/main/resources/server_fqdn.crt \
 
 ## References
 
-* https://spring.io/guides/gs/rest-service/
+* [Spring Boot REST service](https://spring.io/guides/gs/rest-service/)
+* [curl website - SSL Certificate Verification](https://curl.se/docs/sslcerts.html)
+* [Daniel Stenberg's blog - Get the CA Cert for curl](https://daniel.haxx.se/blog/2018/11/07/get-the-ca-cert-for-curl/)
