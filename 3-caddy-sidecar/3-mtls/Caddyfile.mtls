@@ -10,7 +10,7 @@
     }
 }
 
-funny-panda.devopsplayground.org:9081 {
+<YOUR-PANDA>.devopsplayground.org:9081 {
     reverse_proxy kuard:8080
     import mTLS
 }

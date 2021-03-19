@@ -8,8 +8,8 @@ Caddy as sidecar proxy for any kind of microservices to manage MTLS and Certific
 ## Tools used
 
 * Go
-* Caddy v2 
-* SmallStep Certificates (libraries already embeded in Caddy v2)
+* [Caddy v2 ](https://caddyserver.com/v2)
+* [SmallStep Certificates (libraries already embeded in Caddy v2)](https://github.com/smallstep/certificates)
 * Docker
 
 
@@ -515,7 +515,7 @@ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-j
 }
 ```
 It means the Chrome can not load the page because the certificate that Caddy generated doesn't match the FQDN used to call the `kuard` service.
-Caddy embeds a internal PKI only to generate internal certificates (i.e. certificate for `localhost`) and it can not establish TLS connection because that certificate was issued to `localhost`, not to your assigned FQDN (`<your-panda>.devopsplayground.org`).  
+Caddy embeds an [internal PKI only to generate internal certificates](https://github.com/smallstep/certificates) (i.e. certificate for `localhost`) and it can not establish TLS connection because that certificate was issued to `localhost`, not to your assigned FQDN (`<your-panda>.devopsplayground.org`).  
    
 Then, let's update `caddy3` and get a proper certificate for your assigned FQDN. 
 
@@ -662,11 +662,15 @@ docker network inspect lab3-net | jq
 
 ### V. Two-way TLS (Mutual TLS authentication).
 
-MTLS requires generate a client certificate (and key-pair) installed in the Client (Chrome or any browser) certificate store and enable the Caddy TLS policy to require present a valid client certificate during the TLS handshake.
+MTLS requires:
+- a client certificate (and key-pair) and be installed in the Client (Chrome or any browser) certificate store
+- enable the Caddy TLS policy to require present a valid client certificate during the TLS handshake
+- set the certificate chain (CA Root and Intermediate that issued the client certificate) in caddy to allow (Client Authentication) the client to establish secure communication.
 
 
 #### 1. Generate a client certificate.
 
+We are going to use the already generated client certificate and its corresponding certificate chain (root and intermediate) from previous exercise.
 ```sh
 cd ../2-hello-go/
 
@@ -691,11 +695,16 @@ cp 2_intermediate/certs/intermediate.cert.pem ../3-caddy-sidecar/caddy_config/cu
 
 #### 2. Update Caddyfile
 
+Now, let's update the Caddyfile with the right TLS policy. 
+
 ```sh
 cd ../3-caddy-sidecar/
 
 nano 1-basic/Caddyfile.mtls
 ```
+
+> **Important:**   
+> Change `<YOUR-PANDA>` with your assigned FQDN.  
 
 ```sh
 {
@@ -710,7 +719,7 @@ nano 1-basic/Caddyfile.mtls
     }
 }
 
-funny-panda.devopsplayground.org:9081 {
+<YOUR-PANDA>.devopsplayground.org:9081 {
     reverse_proxy kuard:8080
     import mTLS
 }
@@ -731,13 +740,6 @@ docker run -d -p 9091:9081 \
     caddy
 ```
 
-Check the `caddy4` logs:   
-```sh
-CONTAINER_ID4=$(docker inspect --format="{{.Id}}" caddy4)
-
-sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID4}/${CONTAINER_ID4}-json.log | jq 
-```
-
 
 #### 4. Call the service and check MTLS
 
@@ -753,12 +755,13 @@ curl --cacert caddy_data/caddy/certificates/acme-v02.api.letsencrypt.org-directo
 
 ```
 
-From Chrome:
+
+If you call Kuard through Caddy Proxy using a Browser you will get the next error. That is because your browser doesn't have the client certificate (and encrypted private key) and its corresponding certificate chain.
 
 ![](../img/mtls-3-caddy-6-kuard-caddy-mtls-error.png)
 
 
-Check the `caddy4` logs:   
+Checking errors:   
 ```sh
 CONTAINER_ID4=$(docker inspect --format="{{.Id}}" caddy4)
 
@@ -789,12 +792,12 @@ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID4}/${CONTAINER_ID4}
 }
 ```
 
-Let's install the client certificate in Chrome's certificate store.
+Then, to avoid above errors let's install the client certificate in Browser's certificate store. 
 
 ![](../img/mtls-3-caddy-7-download-client-pfx.png)
 
 
-The server will ask to send the client certificate:
+Once certificate installed, open from your Browser the Kuard URL. Immediately after the server (Caddy), will ask you to select the client certificate to establish a secure communication:
 
 ![](../img/mtls-3-caddy-8-chrome-select-client-pfx.png)
 
