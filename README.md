@@ -12,8 +12,8 @@ This repository contains Microservices-based applications used to explain the im
 
 | Application                                   | Description
 | ---                                           | ---         
-| [1-greeting-java](1-greeting-java/)           | Simple REST microservice (Maven Project) based on Spring Boot 2.4.2 and Java 11. 
-| [2-hello-go](2-hello-go/)                     | Simple Go microservice used to demonstrate how to implement mutual TLS authentication.
+| [1-greeting-java](1-greeting-java/)           | Simple REST microservice (Maven Project) based on Spring Boot 2.4.2 and Java 11. This uses Java KeyTool and issues self-signed certificates.
+| [2-hello-go](2-hello-go/)                     | Simple Go microservice used to demonstrate how to implement mutual TLS authentication. This use OpenSSL and issues Root CA and Intermediate certificates.
 | [3-caddy-sidecar](3-caddy-sidecar/)           | Caddy as sidecar proxy for any kind of microservices to manage MTLS and Certificates.
 |                                               |   
 

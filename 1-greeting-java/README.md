@@ -4,13 +4,6 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ![](../img/mtls-java-0-greeting-microservice-arch.png)
 
-## Tools used
-
-* OpenJDK 11 and Spring Boot to create the microservice.
-* Java KeyTool to generate key-pairs, private and public keys, public key certificates and import, export and encode key material.
-* OpenSSL to convert certificates to PEM/DER formats.
-* Maven to build and run the application.
-
 
 ## Steps
 

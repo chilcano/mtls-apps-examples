@@ -10,10 +10,6 @@ This example is based on [Nick Jackson's MTLS Example GitHub repo](https://githu
 - Generate PKCS12 files.
 - Able to read encrypted server private key to run HTTPS.
 
-## Tools used
-
-* Go
-* OpenSSL
 
 ### Components
 
