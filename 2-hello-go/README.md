@@ -25,7 +25,7 @@ This example is based on [Nick Jackson's MTLS Example GitHub repo](https://githu
 
 ## Steps
 
-First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](../) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](../):
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](/) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](/):
 
 ```sh
 cd $HOME/workdir/mtls-apps-examples/2-hello-go
