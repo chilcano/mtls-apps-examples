@@ -25,11 +25,13 @@ This example is based on [Nick Jackson's MTLS Example GitHub repo](https://githu
 
 ## Steps
 
-First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](https://github.com/chilcano/mtls-apps-examples/):
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. 
 
 ```sh
 cd $HOME/workdir/mtls-apps-examples/2-hello-go
 ```
+
+In the 3rd Browser tab open the [Code-Server](https://github.com/chilcano/mtls-apps-examples/).
 
 Also make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work.  
 You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
@@ -40,8 +42,7 @@ You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 1. Cleaning.   
 
 ```sh
-$ cd mtls-apps-examples/2-hello.go
-$ ./openssl_gen_certs.sh cleanup
+./openssl_gen_certs.sh cleanup
 ```
 
 2. Generate all certificates needed for the `localhost` domain with the passphrase `secret`.
@@ -49,9 +50,12 @@ $ ./openssl_gen_certs.sh cleanup
 > You can use other different domain rather `localhost`, if so, that domain must be able to resolve through the available DNS server. If you don't have a DNS server, a workaround is adding that domain name to `/etc/hosts` file.
 
 ```sh
-$ ./openssl_gen_certs.sh localhost secret
+./openssl_gen_certs.sh localhost secret
+```
 
-$ tree .
+Explore with `tree` the files generated or use the [Code-Server](https://github.com/chilcano/mtls-apps-examples/) that you opened in the 3rd Browser tab. 
+```sh
+tree .
 .
 ├── 1_root
 │   ├── certs
@@ -103,22 +107,20 @@ $ tree .
 └── README.md
 ```
 
-### 2. Test One-way TLS
+### 2. One-way TLS
 
 #### 1. Run the microservice.   
 
+In the 1st Wetty terminal execute this:
 ```sh
-$ go version
-go version go1.13.8 linux/amd64
-
-$ go run -v hello.go -domain localhost
+go run -v hello.go -domain localhost
 ```
 
 #### 2. From other terminal call the microservice.   
 
+In the 2nd Wetty terminal execute this:
 ```sh
-$ cd mtls-apps-examples/2-hello.go
-$ curl -i --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:9443/
+curl -i --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:9443/
 
 HTTP/2 200 
 content-type: text/plain
@@ -130,20 +132,23 @@ Hello World
 
 The `2_intermediate/certs/ca-chain.cert.pem` file contains Root and Intermediate certificates in `PEM` format, required to validate the server certificate that microservice sends during the TLS handshake.
 
-### 3. Test Two-way TLS (Mutual TLS authentication)
+
+### 3. Two-way TLS (Mutual TLS authentication)
 
 #### 1. Start the microservice with MTLS enabled.   
 
+In the 1st Wetty terminal execute this:
 ```sh
-$ go run -v hello.go -domain localhost -mtls true
+go run -v hello.go -domain localhost -mtls true
 ```
 
 #### 2. Call the microservice (using client private key).   
 
-Call the endpoint providing the certificates generated for the client, for the server to validate the request the user must provide its certifcate and private key.
+Call the service providing the client certificate, client encrypted private key and all certificates (`ca-chain.cert.pem`) that the HTTP client (curl) trusts.
 
+In the 2nd Wetty terminal execute this:
 ```sh
-$ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
         --cert 4_client/certs/localhost.cert.pem \
         --key 4_client/private/localhost.key.pem \
         https://localhost:9443/
@@ -156,7 +161,7 @@ Hello World
 You could pass to curl the passphrase used to encrypt the client private key through `curl --cert <certificate[:password]>`, in this way when calling through curl it doesn't prompt for the passphrase. 
 
 ```sh
-$ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
         --cert 4_client/certs/localhost.cert.pem:secret \
         --key 4_client/private/localhost.key.pem \
         https://localhost:9443/
@@ -164,13 +169,13 @@ $ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
 Hello World 
 ```
 
-#### 3. Call the microservice (using client PKCS12 - key-pair).  
+#### 3. Call the microservice using client PKCS12 (key-pair).  
 
 We can use a `PKCS12` client file containing certificate and its private key, and avoid pass the private key through the `--key 4_client/private/localhost.key.pem` parameter. 
 So, let's get the PKCS12 file:   
 
 ```sh
-$ openssl pkcs12 -export \
+openssl pkcs12 -export \
           -inkey 4_client/private/localhost.key.pem \
           -in 4_client/certs/localhost.cert.pem \
           -out 4_client/certs/localhost.p12 \
@@ -181,7 +186,7 @@ $ openssl pkcs12 -export \
 Now, let's convert PKCS12 in DER format to PEM format.
 
 ```sh
-$ openssl pkcs12 \
+openssl pkcs12 \
           -in 4_client/certs/localhost.p12 \
           -out 4_client/certs/localhost.p12.pem \
           -passin pass:secret \
@@ -191,10 +196,13 @@ $ openssl pkcs12 \
 And finally, let's to call the service without client private key (`4_client/private/localhost.key.pem`) and without certificate (`4_client/certs/localhost.cert.pem`) but using PKCS12 in PEM format only.
 
 ```sh
-$ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
+curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
         --cert 4_client/certs/localhost.p12.pem:secret \
         https://localhost:9443/
+```
 
+If everything goes well, you will see this:
+```sh
 Hello World 
 ```
 

@@ -14,11 +14,13 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ## Steps
 
-First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](https://github.com/chilcano/mtls-apps-examples/):
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. 
 
 ```sh
 cd $HOME/workdir/mtls-apps-examples/1-greeting-java 
 ```
+
+In the 3rd Browser tab open the [Code-Server](https://github.com/chilcano/mtls-apps-examples/).
 
 Also make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work.  
 You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
@@ -39,9 +41,13 @@ server:
   port: 9090
 ``` 
 
+> **Recommendation:**   
+> You can use the [Code-Server](https://github.com/chilcano/mtls-apps-examples/) that you opened in the 3rd Browser tab. Only select the right file to edit.
+
+
 #### 2. Clean and build the project.  
 
-
+In the 1st Wetty Terminal execute this:
 ```sh
 mvn clean spring-boot:run
 ``` 
@@ -49,7 +55,7 @@ mvn clean spring-boot:run
 #### 3. Calling the REST service.  
 
 
-In other Wetty Terminal, execute this:
+In the 2nd Wetty Terminal, execute this:
 ```sh
 curl -i http://localhost:9090/greeting
 ```
@@ -67,14 +73,14 @@ Date: Tue, 16 Feb 2021 13:41:15 GMT
 
 #### 4. Close the running REST service.
 
-Just type `Ctrl + C`.   
+Just type `Ctrl + C` in the Wetty terminal where are you running your REST service (1st Wetty Terminal).
 
 
 ### II. HTTP over TLS (One-way TLS)
 
 #### 1. Generate the server certificate.   
 
-Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore) file as repository of public-key certificates and asymmetric private keys. Then, to create a keystore with a public and private key, execute the following command in your terminal:
+Any Java application use [keystore](https://en.wikipedia.org/wiki/Java_KeyStore) file as repository of public-key certificates and asymmetric private keys. We can use [Java Keytool](https://docs.oracle.com/javase/7/docs/technotes/tools/solaris/keytool.html) to create the keystore with a public and private key:
 ```sh
 keytool -v \
         -genkeypair \
@@ -90,21 +96,22 @@ keytool -v \
         -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement \
         -ext ExtendedKeyUsage=serverAuth,clientAuth \
         -ext SubjectAlternativeName:c=DNS:localhost,IP:127.0.0.1
+```
 
+If everything goes well, you will see this:
+```sh
 Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) with a validity of 3,650 days
         for: CN=MTLS for Java Microservice, OU=DevOps Playground, O=ECS, C=UK
 [Storing src/main/resources/server_identity.p12]
 ```
 
 > **Important:**   
->   
-> We have to create a keystore with a public and private key for the REST service (server). The public key will be shared with users/clients so that they can encrypt the communication.  
-> The communication between both parties (user and server) can be decrypted with the private key of the REST service (server).  
-> The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or in a vault (i.e. PKCS#7, HSM, Hashicorp Vault).
+> We have to create a keystore with a public and private key for the REST service (server). The public key will be shared with users/clients so that they can encrypt the communication. The communication between both parties (user and server) can be decrypted with the private key of the REST service (server).  
+> The private key of the REST service (server) never must be shared and must be keep it secret, symmetrically encrypted or stored in a vault (i.e. PKCS#7, HSM, Hashicorp Vault, AWS Secrets Manager, etc.).
 
 #### 2. Update the REST service onfiguration file.
 
-Once generated the TLS certificate, you will need to update the REST service (server) `src/main/resources/application.yml` file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
+Once generated the TLS certificate, you will need to update the REST service (server) config file with the location of the keystore and symmetric passwords required for keystore itself and for private key.  
 ```yaml
 nano src/main/resources/application.yml
 ```
@@ -121,11 +128,12 @@ server:
 
 #### 3. Run the REST service and test the One-way TLS connection.   
 
+In the 1st Wetty Terminal execute this:
 ```sh
 mvn clean spring-boot:run
 ```
 
-In other Wetty Terminal execute this:
+In the 2nd Wetty Terminal execute this:
 ```sh
 curl --insecure -v https://localhost:9443/greeting
 
@@ -146,13 +154,8 @@ curl failed to verify the legitimacy of the server and therefore could not
 establish a secure connection to it. To learn more about this situation and
 how to fix it, please visit the web page mentioned above.
 ```
-
-> **Important:**   
->   
-> That means `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the server certificate.
-
-To avoid this error, you need to get the certificate(s) of the server and store it in the trusted CA certificate store of your curl and/or browser.  
-You can get the server certificate with the following command. Execute it from `$HOME/workdir/mtls-apps-examples/1-greeting-java`:
+ 
+The above error means that `curl` (client) can not get validated the REST service's TLS certificate because the client don't have or don't trust the CA that issued the server certificate. Let's get the certificate(s) of the server and pass it to curl with the `--cacert`:
 ```sh
 keytool -v \
     -exportcert \
@@ -161,34 +164,35 @@ keytool -v \
     -keystore src/main/resources/server_identity.p12 \
     -storepass secret \
     -rfc 
+```
 
+The server certificate will generated in this path:
+```
 Certificate stored in file <src/main/resources/server.crt>
 ```
 
-Now, install `src/main/resources/server.crt` in the trusted CA certificate store that curl uses.  
+Now, call the REST service using `--cacert` param. 
 ```sh
 curl --cacert src/main/resources/server.crt \
-       --capath /etc/ssl/certs/ \
+        --capath /etc/ssl/certs/ \
         https://localhost:9443/greeting
 ```
 
-Unfortunately curl still will show same error about `verify the legitimacy of the server` because, curl doesn't validate self-signed certificates, despite installing it in the CA certificate store. 
-However, you would bypass this using Browser instead of curl.
-
-Install CA certificates in the trusted CA certificate store and make available to curl requires compile curl from source code. The process is explained in below links in References section.
-
+> **Important:**  
+> Unfortunately curl still will show same error about `verify the legitimacy of the server` because, curl doesn't support self-signed certificates, despite passing it using  `--cacert`. However, you can bypass this by installing CA certificates (root and intermediates, in our case the `server.crt` because it is self-signed) in the trusted CA certificate store of your workstation and compiling curl from source code. The process is explained in below links in References section.    
+    
+> **Important:**  
+> Use self-signed certificates only for testing purposes and running your test in your LAN. The majority of HTTP clients do not support Self-Signed Certificates issued to localhost. Although, you could assume those risks by configuring your HTTP client.   
 
 
 ### III. Enabling Mutual TLS Authentication (Two-way TLS)
 
-The configuration of MTLS (Two-way TLS) in the server will require a new certificate for the authentication of the client. 
-This configuration will force the client (curl, your browser or any proper HTTP client) to identify itself using a certificate, and in that way, the server (REST service) 
-can also validate the identity of the client and whether or not it is a trusted one. 
-You can get this by configuring the server (REST service) that you also want to validate the client with the property `client-auth` in the `src/main/resources/application.yml` file.   
+The configuration of MTLS (Two-way TLS) will require a new certificate for the client authentication. This configuration will force the client (curl) to identify itself using a certificate, and in that way, the server (REST service) can also validate the identity of the client and whether or not it is a trusted one.  
+
 
 #### 1. Generating a client certificate.  
 
-We are going to use ``Java KeyTool` to create a new client self-signed certificate. Use the following command:
+We are going to use `Java KeyTool` to create a new client self-signed certificate:
 
 ```sh
 keytool -v \
@@ -206,14 +210,12 @@ keytool -v \
         -ext ExtendedKeyUsage=serverAuth,clientAuth 
 ```
 
-> The above command will not add the `SubjectAlternativeName` attribute to the client certificate (`-ext SubjectAlternativeName:c=DNS:<client-fqdn>,IP:<client-ip-address>`) because the client (curl or browser) will be executed in the same host where the REST service is running. But if you want to execute the client (curl or browser) from different host, you could set a `SubjectAlternativeName` attribute with a `fqdn`, `hostname` or `IP address` what the REST service (server) can resolve and validate without issues.   
-> You can simulate this behaviour when running the client and server in the same host, only you have to add as client's hostname and server's hostname to the `/etc/hosts` file.
 
-Once the `client_identity.p12` (private key and public key certificate) has been generated, we must tell the server about which root and intermediate certificates to trust. This is done creating a `truststore` containing all those trusted certificates. We can get the client certificate extracting it from previously generated `client_identity.p12`.
+The only difference between the client's keytool command and server's one is that the server's one has `-ext SubjectAlternativeName:c=DNS:localhost,IP:127.0.0.1`. The `SubjectAlternativeName` attribute containing a `fqdn`, `hostname` or `IP address` is no required if the one that has the certificate is running as client.
 
 #### 2. Extract the client certificate from `client_identity.p12`.  
 
-The `client_identity.p12` file containts the key-pair (private and public key) and the public key certificate. We need run the below command to get only the publick key certificate.
+The `client_identity.p12` file containts the key-pair (private and public key) and the public key certificate. We need run the next command to get only the client certificate.
 ```sh
 keytool -v \
         -exportcert \
@@ -226,7 +228,7 @@ keytool -v \
 
 #### 3. Create the server `truststore` with the client certificate.   
 
-The `truststore`, in `JKS` format, file must contain all certificates that are trusted, and since we have 2 self-signed certificates (client and server) in this Lab, the `truststore` will be the same for the client and server.
+The `truststore` file, in `JKS` format, must contain all certificates that are trusted, and since we have 2 self-signed certificates (client and server), the `truststore` will be the same for the client and server.
 ```sh
 keytool -v \
         -importcert \
@@ -237,7 +239,7 @@ keytool -v \
         -noprompt
 ```
 
-#### 4. Update the server configuration file.
+#### 4. Update the REST service configuration file.
 
 
 Update the server configuration:
@@ -261,10 +263,7 @@ server:
 
 #### 5. Get the client private key in PEM format. 
 
-> Since `cURL` only sopports `PEM`, `DER` and `ENG` and all `*.crt` files in format `PEM` and doesn't support `Java KeyStore` files containing key material (`*.jks`). We need to extract the client private key in `PEM` format from `client_identity.p12` file.
-> Only if that is the case, we need to convert the `JKS` to ``PKCS12` and then extract the private key from the `PKCS12`. 
-> Then, the next `keytool` command only is necessary if the previous `Java KeyStore` file was created in `JKS` format. In our case all `Java KeyStore` files were create with the `-deststoretype PKCS12` flag, so that **next command is not necessary**.   
-
+> The next `keytool` command only is necessary if the previous `Java KeyStore` file was generated in `JKS` format. In our case all `Java KeyStore` files (`client_identity.p12` and `server_identity.p12`) were create with the `-deststoretype PKCS12` flag, so that **next command is not necessary**.   
 ```sh
 keytool -importkeystore \
         -srckeystore src/main/resources/client_identity.jks \
@@ -280,7 +279,7 @@ keytool -importkeystore \
         -noprompt
 ```
 
-Get the `PEM` file from `client_identity.p12` that holds only the client private key.
+Then, get the `PEM` file from `client_identity.p12` that holds only (note the `-nocerts` flag) the client private key.
 ```sh
 openssl pkcs12 \
           -in src/main/resources/client_identity.p12 \
@@ -292,49 +291,33 @@ openssl pkcs12 \
 
 #### 6. Finally, you are able to call to the REST service to test MTLS.   
 
-Restart the server:
+In the 1st Wetty terminal restart the server:
 ```sh
 mvn clean spring-boot:run
 ```
 
-In other terminal execute curl.
-```sh
-curl --cacert src/main/resources/server_fqdn.crt \
-       --key src/main/resources/client_identity.pem \
-       --cert src/main/resources/client.crt \
-       https://localhost:9443/greeting
-
-Enter PEM pass phrase:
-
-curl: (60) SSL certificate problem: unable to get local issuer certificate
-More details here: https://curl.haxx.se/docs/sslcerts.html
-
-curl failed to verify the legitimacy of the server and therefore could not
-establish a secure connection to it. To learn more about this situation and
-how to fix it, please visit the web page mentioned above.
-```
-
-The above error happens because the server certificate's SAN doesn't match the REST service's domain name. Lets bypass this error for a moment and use `-k` flag to check if the REST service and MTLS are working.
-
+In the 2nd Wetty terminal execute curl. The curl command will ask for `PEM pass phrase` to be able opening the `client_identity.pem`. Remmember, the `client_identity.pem` file contains a private key, it has been encrypted and encoded in base64.
 ```sh
 curl -k --cacert src/main/resources/server_fqdn.crt \
        --key src/main/resources/client_identity.pem \
        --cert src/main/resources/client.crt \
        https://localhost:9443/greeting
+```
 
+```sh
 Enter PEM pass phrase:
 
 {"id":2,"content":"Hello, World!"}
 ```
 
-#### 9. Testing MTLS using the Client PKCS12 (key-pair).  
+#### 7. Testing MTLS using the Client PKCS12 (key-pair).  
 
-To take advantage of `--cert <certificate[:password]>` flag and avoid prompt for the private key's passphrase, we could generate a `PKCS12` file in `PEM` format with a passphrase containing the certificate and use all together according the previous flag (`--cert <certificate[:password]>`). To use it, only follow the next command:
+We can take advantage of `--cert <certificate[:password]>` flag and avoid curl prompts for the private key's passphrase. Only we need to generate a `PKCS12` file in `PEM` format containing the certificate and key-pair (public and encrypted private key) and use all together. Use the next command:
 
 ```sh
 openssl pkcs12 \
           -in src/main/resources/client_identity.p12 \
-          -out src/main/resources/client_identity.pem \
+          -out src/main/resources/client_identity_and_cert.pem \
           -passin pass:secret \
           -passout pass:secret
 ```
@@ -342,7 +325,7 @@ openssl pkcs12 \
 Finally, execute curl again passing the passphrase using the aforementioned flag `--cert <certificate[:password]>`:   
 ```sh
 curl -k --cacert src/main/resources/server_fqdn.crt \
-       --cert src/main/resources/client_identity.pem:secret \
+       --cert src/main/resources/client_identity_and_cert.pem:secret \
        https://localhost:9443/greeting
 ```
    
