@@ -14,7 +14,7 @@ This is a simple REST microservice (Maven Project) based on Spring Boot 2.4.2 an
 
 ## Steps
 
-First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](/) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](/):
+First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. In the 3rd Browser tab open the [Code-Server](https://github.com/chilcano/mtls-apps-examples/):
 
 ```sh
 cd $HOME/workdir/mtls-apps-examples/1-greeting-java 
