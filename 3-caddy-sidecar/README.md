@@ -7,51 +7,12 @@ Caddy as sidecar proxy for any kind of microservices to manage MTLS and Certific
 
 ## Tools used
 
-* Go
 * [Caddy v2 ](https://caddyserver.com/v2)
 * [SmallStep Certificates (libraries already embeded in Caddy v2)](https://github.com/smallstep/certificates)
 * Docker
 
 
 ## Preparation
-
-Caddy can be installed as a Linux service, the [binary can be downloaded](https://caddyserver.com/download) and embedded in applications or use it in a [Docker Container](https://hub.docker.com/_/caddy). This latest option is the way we are going to use along this Lab.
-
-#### Install Docker
-
-If your workstation **doesn't have Docker installed and running**, please, follow these commands.
-
-```sh
-curl gnupg-agent software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt update
-sudo apt -y install -y docker-ce docker-ce-cli containerd.io
-sudo usermod -a -G docker $USER
-sudo systemctl enable docker
-```
-
-#### Caddy in Docker 
-
-Once installed Docker we are ready to use Caddy. Then, lets download the Caddy docker image:  
-
-```sh
-docker pull caddy
-```
-
-Checking the downloaded Caddy docker image.
-```sh
-docker images
-```
-You will see this:
-```sh
-REPOSITORY             TAG       IMAGE ID       CREATED        SIZE
-caddy                  latest    88588539bb90   3 hours ago    39.5MB
-codercom/code-server   latest    681a48e7bf50   3 weeks ago    838MB
-wettyoss/wetty         latest    06a426b25e16   4 months ago   148MB
-```
-
-## Steps
 
 First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. 
 
@@ -65,83 +26,26 @@ Also make sure the owner of all files and directories under `workdir` is `$USER`
 You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 
 
-### I. Basic usage with Caddy in Docker.
-
-
-#### 1. Serving static files with Caddy on HTTP.
-
-Caddy is able to server static files and work as proxy at the same time. Lets check if Caddy using this feature: 
-```sh
-docker run -d -p 8001:80 \
-    -v $PWD/1-basic/hola.html:/usr/share/caddy/hola.html \
-    --name caddy1 \
-    caddy
-```
-
-#### 2. Checking if Caddy is serving static web page.
-
-
-```sh
-curl -i http://localhost:8001/hola.html
-
-HTTP/1.1 200 OK
-Accept-Ranges: bytes
-Content-Length: 12
-Content-Type: text/html; charset=utf-8
-Etag: "qpjzl3c"
-Last-Modified: Sat, 06 Mar 2021 15:12:39 GMT
-Server: Caddy
-Date: Sat, 06 Mar 2021 15:19:21 GMT
-
-Hola amigo!
-```
-
-And from a browser:
-
-![](../img/mtls-3-caddy-1-chrome.png)
-
-
-### II. Advanced Caddy configuration.
-
-
-#### 1. Overwriting the Caddy config file
-
-Check the Caddy configuration. 
-
-```sh
-cat 1-basic/Caddyfile.example1
-```
-You should see:
-```sh
-:80
-
-# Set this path to your site's directory.
-root * /usr/share/caddy
-
-# Enable the static file server.
-file_server
-```
-Above config means we are going to run a Caddy instance over the `8002` port, overwriting the Caddy config file (`/etc/caddy/Caddyfile`) and mounting `/data` and `/config` folders.
-
 > **Recommendation:**   
-> You can use the [Code-Server](https://github.com/chilcano/mtls-apps-examples/) that you opened in the 3rd Browser tab.
+> You can use the [Code-Server](https://github.com/chilcano/mtls-apps-examples/) that you opened in the 3rd Browser tab to edit files.
 
-```sh
-docker run -d -p 8002:80 \
-    -v $PWD/1-basic/hola.html:/usr/share/caddy/hola.html \
-    -v $PWD/1-basic/Caddyfile.example1:/etc/caddy/Caddyfile \
-    --name caddy2 \
-    caddy
-```sh
 
-```sh
-curl http://localhost:8002/hola.html
+#### Caddy and Docker
 
-Hola amigo!
+Caddy can be installed as a Linux service, the [binary can be downloaded](https://caddyserver.com/download) and embedded in applications or use it in a [Docker Container](https://hub.docker.com/_/caddy). This latest option is the way we are going to use along this Lab.
+
+
+**Once installed Docker we are ready to download Caddy Docker image.**
+```sh
+docker pull caddy
 ```
 
-#### 2. Exploring Caddy docker process.
+**Checking the downloaded Caddy docker image.**
+```sh
+docker images
+```
 
+**Exploring Caddy docker process.**  
 ```sh
 docker exec -it caddy2 ls -la /config/caddy/
 
@@ -153,8 +57,10 @@ docker exec -it caddy2 ls -la /usr/share/caddy/
 * `/config/caddy/` - It is the directory where the Caddy configuration is saved.
 * `/data/caddy/` - It is the directory where the Caddy data (certificates, CA, etc.) is saved.
 * `/usr/share/caddy/` - It is the directory where the static web page is saved.
+
 All above directories can be mounted.  
 
+**Caddy logs.**   
 Caddy can [generate formated logs](https://caddyserver.com/docs/caddyfile/directives/log), but in this lab the Docker' stdout is enough:
 ```sh
 docker logs -f caddy2
@@ -166,22 +72,23 @@ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy2)
 sudo tail -f  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq '.'
 ```
 
-#### 3. Checking the running Caddy docker instances.
-
+**Checking the running Caddy docker instances.**
 ```sh
 docker ps
 ```
 
-Remove recently created container instances:  
+**Remove recently created container instances.**
 ```sh
 docker rm -f caddy1 caddy2
 ```
 
-### III. Caddy as HTTP Proxy or Sidecar Proxy.
+## Steps
+
+### I. Caddy as HTTP Proxy or Sidecar Proxy.
 
 We are going to configure Caddy as a Proxy (no as `file_server`) listening on `9080` to expose Kuard ([Demo application for "Kubernetes Up and Running"](https://github.com/kubernetes-up-and-running/kuard)) running `9070` port.
 
-#### 1. Running Kuard
+#### 1. Running Kuard as Webapp
 
 ```sh
 docker run -d -p 9070:8080 \
@@ -343,159 +250,15 @@ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
 sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq 
 ```
 
-```sh
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.6446476,\"msg\":\"using provided configuration\",\"config_file\":\"/etc/caddy/Caddyfile\",\"config_adapter\":\"caddyfile\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.644814428Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.646472,\"logger\":\"admin\",\"msg\":\"admin endpoint started\",\"address\":\"tcp/localhost:2019\",\"enforce_origin\":false,\"origins\":[\"localhost:2019\",\"[::1]:2019\",\"127.0.0.1:2019\"]}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.646537544Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.6476705,\"logger\":\"http\",\"msg\":\"enabling automatic HTTP->HTTPS redirects\",\"server_name\":\"srv0\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.64790584Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.6498604,\"logger\":\"tls.cache.maintenance\",\"msg\":\"started background certificate maintenance\",\"cache\":\"0xc0002ce310\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.649920521Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.6611228,\"logger\":\"tls\",\"msg\":\"cleaned up storage units\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.661210905Z"
-}
-{
-  "log": "{\"level\":\"warn\",\"ts\":1615153359.7193143,\"logger\":\"pki.ca.local\",\"msg\":\"installing root certificate (you might be prompted for password)\",\"path\":\"storage:pki/authorities/local/root.crt\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.719438806Z"
-}
-{
-  "log": "2021/03/07 21:42:39 define JAVA_HOME environment variable to use the Java trust\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.71999834Z"
-}
-{
-  "log": "2021/03/07 21:42:39 Warning: \"certutil\" is not available, install \"certutil\" with \"apt install libnss3-tools\" or \"yum install nss-tools\" and try again\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.720045566Z"
-}
-{
-  "log": "2021/03/07 21:42:39 certificate installed properly in linux trusts\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.751433802Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615153359.751695,\"logger\":\"http\",\"msg\":\"starting server loop\",\"address\":\"[::]:9080\",\"http3\":false,\"tls\":true}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.751762832Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615153359.7517471,\"logger\":\"http\",\"msg\":\"starting server loop\",\"address\":\"[::]:80\",\"http3\":false,\"tls\":false}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.75184962Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.7517562,\"logger\":\"http\",\"msg\":\"enabling automatic TLS certificate management\",\"domains\":[\"localhost\"]}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.751859786Z"
-}
-{
-  "log": "{\"level\":\"warn\",\"ts\":1615153359.7523851,\"logger\":\"tls\",\"msg\":\"stapling OCSP\",\"error\":\"no OCSP stapling for [localhost]: no OCSP server specified in certificate\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.752447258Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.7525363,\"msg\":\"autosaved config\",\"file\":\"/config/caddy/autosave.json\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.752581438Z"
-}
-{
-  "log": "{\"level\":\"info\",\"ts\":1615153359.752552,\"msg\":\"serving initial configuration\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-07T21:42:39.752591238Z"
-}
-```
-According the logs, Caddy has generated a TLS certificate (and key-pair) for `caddy3` running on `localhost`, then we are ready to call the service over HTTPS.   
+In the logs you will see that Caddy has generated a TLS certificate (and key-pair) for `caddy3` running on `localhost`, then we are ready to call the service over HTTPS.   
 
 Let's call to `kuard` container over HTTPS through Caddy Proxy but bypassing the validation of server certificate.   
 ```sh
 curl -ivk https://localhost:9090/healthy
 ```
 
-You should see this:
-```sh
+You should see in the HTTP headers the TLS handshake.
 
-*   Trying 127.0.0.1...
-* TCP_NODELAY set
-* Connected to localhost (127.0.0.1) port 9090 (#0)
-* ALPN, offering h2
-* ALPN, offering http/1.1
-* successfully set certificate verify locations:
-*   CAfile: /etc/ssl/certs/ca-certificates.crt
-  CApath: /etc/ssl/certs
-* TLSv1.3 (OUT), TLS handshake, Client hello (1):
-* TLSv1.3 (IN), TLS handshake, Server hello (2):
-* TLSv1.3 (IN), TLS Unknown, Certificate Status (22):
-* TLSv1.3 (IN), TLS handshake, Unknown (8):
-* TLSv1.3 (IN), TLS Unknown, Certificate Status (22):
-* TLSv1.3 (IN), TLS handshake, Certificate (11):
-* TLSv1.3 (IN), TLS Unknown, Certificate Status (22):
-* TLSv1.3 (IN), TLS handshake, CERT verify (15):
-* TLSv1.3 (IN), TLS Unknown, Certificate Status (22):
-* TLSv1.3 (IN), TLS handshake, Finished (20):
-* TLSv1.3 (OUT), TLS change cipher, Client hello (1):
-* TLSv1.3 (OUT), TLS Unknown, Certificate Status (22):
-* TLSv1.3 (OUT), TLS handshake, Finished (20):
-* SSL connection using TLSv1.3 / TLS_AES_128_GCM_SHA256
-* ALPN, server accepted to use h2
-* Server certificate:
-*  subject: [NONE]
-*  start date: Mar  7 17:33:31 2021 GMT
-*  expire date: Mar  8 05:33:31 2021 GMT
-*  issuer: CN=Caddy Local Authority - ECC Intermediate
-*  SSL certificate verify result: unable to get local issuer certificate (20), continuing anyway.
-* Using HTTP2, server supports multi-use
-* Connection state changed (HTTP/2 confirmed)
-* Copying HTTP/2 data in stream buffer to connection buffer after upgrade: len=0
-* TLSv1.3 (OUT), TLS Unknown, Unknown (23):
-* TLSv1.3 (OUT), TLS Unknown, Unknown (23):
-* TLSv1.3 (OUT), TLS Unknown, Unknown (23):
-* Using Stream ID: 1 (easy handle 0x556b4a537600)
-* TLSv1.3 (OUT), TLS Unknown, Unknown (23):
-> GET /healthy HTTP/2
-> Host: localhost:9090
-> User-Agent: curl/7.58.0
-> Accept: */*
-> 
-* TLSv1.3 (IN), TLS Unknown, Certificate Status (22):
-* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
-* TLSv1.3 (IN), TLS Unknown, Unknown (23):
-* Connection state changed (MAX_CONCURRENT_STREAMS updated)!
-* TLSv1.3 (OUT), TLS Unknown, Unknown (23):
-* TLSv1.3 (IN), TLS Unknown, Unknown (23):
-* TLSv1.3 (IN), TLS Unknown, Unknown (23):
-< HTTP/2 200 
-HTTP/2 200 
-< content-type: text/plain
-content-type: text/plain
-< date: Sun, 07 Mar 2021 22:14:34 GMT
-date: Sun, 07 Mar 2021 22:14:34 GMT
-< server: Caddy
-server: Caddy
-< content-length: 2
-content-length: 2
-
-< 
-* TLSv1.3 (IN), TLS Unknown, Unknown (23):
-* Connection #0 to host localhost left intact
-
-ok
-```
 
 #### 7. Call Kuard through Proxy from a browser.
 
@@ -520,7 +283,7 @@ Caddy embeds an [internal PKI only to generate internal certificates](https://gi
 Then, let's update `caddy3` and get a proper certificate for your assigned FQDN. 
 
 
-### IV. One-way TLS.
+### II. Enabling One-way TLS.
 
 #### 1. Update Caddyfile to use the FQDN.
 
@@ -660,7 +423,7 @@ docker network inspect lab3-net | jq
 ```
 
 
-### V. Two-way TLS (Mutual TLS authentication).
+### III. Enabling Two-way TLS (Mutual TLS authentication).
 
 MTLS requires:
 - a client certificate (and key-pair) and be installed in the Client (Chrome or any browser) certificate store
@@ -804,41 +567,7 @@ Once certificate installed, open from your Browser the Kuard URL. Immediately af
 
 ![](../img/mtls-3-caddy-9-kuard-caddy-mtls-ok.png)
 
-And finally, you should see the `caddy4` logs:
-
-```sh
-[...]
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615167728.540429,\"logger\":\"http.stdlib\",\"msg\":\"http: TLS handshake error from 83.54.18.132:40016: EOF\"}\n",
-  "stream": "stderr",
-  "time": "2021-03-08T01:42:08.54063686Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615167733.9479635,\"logger\":\"http.handlers.reverse_proxy\",\"msg\":\"upstream roundtrip\",\"upstream\":\"kuard:8080\",\"request\":{\"remote_addr\":\"83.54.18.132:40018\",\"proto\":\"HTTP/2.0\",\"method\":\"GET\",\"host\":\"funny-panda.devopsplayground.org:9091\",\"uri\":\"/\",\"headers\":{\"Sec-Fetch-User\":[\"?1\"],\"Sec-Ch-Ua\":[\"\\\"Google Chrome\\\";v=\\\"89\\\", \\\"Chromium\\\";v=\\\"89\\\", \\\";Not A Brand\\\";v=\\\"99\\\"\"],\"Sec-Ch-Ua-Mobile\":[\"?0\"],\"Accept\":[\"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9\"],\"Sec-Fetch-Mode\":[\"navigate\"],\"Dnt\":[\"1\"],\"Sec-Fetch-Site\":[\"none\"],\"Cookie\":[\"io=6hGzCUltLNnS-WsKAAAO\"],\"X-Forwarded-For\":[\"83.54.18.132\"],\"X-Forwarded-Proto\":[\"https\"],\"Cache-Control\":[\"max-age=0\"],\"Sec-Fetch-Dest\":[\"document\"],\"Accept-Encoding\":[\"gzip, deflate, br\"],\"Accept-Language\":[\"en-GB,en;q=0.9,ca;q=0.8,es;q=0.7,it;q=0.6\"],\"Upgrade-Insecure-Requests\":[\"1\"],\"User-Agent\":[\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36\"]},\"tls\":{\"resumed\":false,\"version\":772,\"cipher_suite\":4865,\"proto\":\"h2\",\"proto_mutual\":true,\"server_name\":\"funny-panda.devopsplayground.org\",\"client_common_name\":\"client-lab3\",\"client_serial\":\"1049107\"}},\"duration\":0.001654184,\"headers\":{\"Date\":[\"Mon, 08 Mar 2021 01:42:13 GMT\"],\"Content-Length\":[\"2186\"],\"Content-Type\":[\"text/html\"]},\"status\":200}\n",
-  "stream": "stderr",
-  "time": "2021-03-08T01:42:13.948090056Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615167734.0763571,\"logger\":\"http.handlers.reverse_proxy\",\"msg\":\"upstream roundtrip\",\"upstream\":\"kuard:8080\",\"request\":{\"remote_addr\":\"83.54.18.132:40018\",\"proto\":\"HTTP/2.0\",\"method\":\"GET\",\"host\":\"funny-panda.devopsplayground.org:9091\",\"uri\":\"/static/css/bootstrap.min.css\",\"headers\":{\"User-Agent\":[\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36\"],\"Sec-Fetch-Site\":[\"same-origin\"],\"Sec-Fetch-Dest\":[\"style\"],\"X-Forwarded-For\":[\"83.54.18.132\"],\"Sec-Ch-Ua\":[\"\\\"Google Chrome\\\";v=\\\"89\\\", \\\"Chromium\\\";v=\\\"89\\\", \\\";Not A Brand\\\";v=\\\"99\\\"\"],\"Sec-Ch-Ua-Mobile\":[\"?0\"],\"Cookie\":[\"io=6hGzCUltLNnS-WsKAAAO\"],\"Referer\":[\"https://funny-panda.devopsplayground.org:9091/\"],\"Accept-Encoding\":[\"gzip, deflate, br\"],\"Accept-Language\":[\"en-GB,en;q=0.9,ca;q=0.8,es;q=0.7,it;q=0.6\"],\"X-Forwarded-Proto\":[\"https\"],\"Dnt\":[\"1\"],\"Accept\":[\"text/css,*/*;q=0.1\"],\"Sec-Fetch-Mode\":[\"no-cors\"]},\"tls\":{\"resumed\":false,\"version\":772,\"cipher_suite\":4865,\"proto\":\"h2\",\"proto_mutual\":true,\"server_name\":\"funny-panda.devopsplayground.org\",\"client_common_name\":\"client-lab3\",\"client_serial\":\"1049107\"}},\"duration\":0.003203312,\"headers\":{\"Accept-Ranges\":[\"bytes\"],\"Content-Length\":[\"144292\"],\"Content-Type\":[\"text/css; charset=utf-8\"],\"Last-Modified\":[\"Thu, 16 Nov 2017 22:09:48 GMT\"],\"Date\":[\"Mon, 08 Mar 2021 01:42:14 GMT\"]},\"status\":200}\n",
-  "stream": "stderr",
-  "time": "2021-03-08T01:42:14.076453038Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615167734.0786808,\"logger\":\"http.handlers.reverse_proxy\",\"msg\":\"upstream roundtrip\",\"upstream\":\"kuard:8080\",\"request\":{\"remote_addr\":\"83.54.18.132:40018\",\"proto\":\"HTTP/2.0\",\"method\":\"GET\",\"host\":\"funny-panda.devopsplayground.org:9091\",\"uri\":\"/static/css/styles.css\",\"headers\":{\"Sec-Fetch-Mode\":[\"no-cors\"],\"Dnt\":[\"1\"],\"Accept\":[\"text/css,*/*;q=0.1\"],\"Sec-Fetch-Site\":[\"same-origin\"],\"User-Agent\":[\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36\"],\"Accept-Language\":[\"en-GB,en;q=0.9,ca;q=0.8,es;q=0.7,it;q=0.6\"],\"Cookie\":[\"io=6hGzCUltLNnS-WsKAAAO\"],\"X-Forwarded-For\":[\"83.54.18.132\"],\"X-Forwarded-Proto\":[\"https\"],\"Sec-Ch-Ua\":[\"\\\"Google Chrome\\\";v=\\\"89\\\", \\\"Chromium\\\";v=\\\"89\\\", \\\";Not A Brand\\\";v=\\\"99\\\"\"],\"Sec-Fetch-Dest\":[\"style\"],\"Accept-Encoding\":[\"gzip, deflate, br\"],\"Sec-Ch-Ua-Mobile\":[\"?0\"],\"Referer\":[\"https://funny-panda.devopsplayground.org:9091/\"]},\"tls\":{\"resumed\":false,\"version\":772,\"cipher_suite\":4865,\"proto\":\"h2\",\"proto_mutual\":true,\"server_name\":\"funny-panda.devopsplayground.org\",\"client_common_name\":\"client-lab3\",\"client_serial\":\"1049107\"}},\"duration\":0.00268869,\"headers\":{\"Accept-Ranges\":[\"bytes\"],\"Content-Length\":[\"1585\"],\"Content-Type\":[\"text/css; charset=utf-8\"],\"Last-Modified\":[\"Thu, 16 Nov 2017 22:09:48 GMT\"],\"Date\":[\"Mon, 08 Mar 2021 01:42:14 GMT\"]},\"status\":200}\n",
-  "stream": "stderr",
-  "time": "2021-03-08T01:42:14.078749455Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615167734.0877504,\"logger\":\"http.handlers.reverse_proxy\",\"msg\":\"upstream roundtrip\",\"upstream\":\"kuard:8080\",\"request\":{\"remote_addr\":\"83.54.18.132:40018\",\"proto\":\"HTTP/2.0\",\"method\":\"GET\",\"host\":\"funny-panda.devopsplayground.org:9091\",\"uri\":\"/built/bundle.js\",\"headers\":{\"Sec-Fetch-Dest\":[\"script\"],\"Accept\":[\"*/*\"],\"Sec-Fetch-Site\":[\"same-origin\"],\"User-Agent\":[\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36\"],\"Accept-Language\":[\"en-GB,en;q=0.9,ca;q=0.8,es;q=0.7,it;q=0.6\"],\"Referer\":[\"https://funny-panda.devopsplayground.org:9091/\"],\"Accept-Encoding\":[\"gzip, deflate, br\"],\"Cookie\":[\"io=6hGzCUltLNnS-WsKAAAO\"],\"X-Forwarded-Proto\":[\"https\"],\"Sec-Ch-Ua\":[\"\\\"Google Chrome\\\";v=\\\"89\\\", \\\"Chromium\\\";v=\\\"89\\\", \\\";Not A Brand\\\";v=\\\"99\\\"\"],\"Dnt\":[\"1\"],\"X-Forwarded-For\":[\"83.54.18.132\"],\"Sec-Ch-Ua-Mobile\":[\"?0\"],\"Sec-Fetch-Mode\":[\"no-cors\"]},\"tls\":{\"resumed\":false,\"version\":772,\"cipher_suite\":4865,\"proto\":\"h2\",\"proto_mutual\":true,\"server_name\":\"funny-panda.devopsplayground.org\",\"client_common_name\":\"client-lab3\",\"client_serial\":\"1049107\"}},\"duration\":0.009939724,\"headers\":{\"Date\":[\"Mon, 08 Mar 2021 01:42:14 GMT\"],\"Accept-Ranges\":[\"bytes\"],\"Content-Length\":[\"340634\"],\"Content-Type\":[\"application/javascript\"],\"Last-Modified\":[\"Sun, 13 Jan 2019 00:54:37 GMT\"]},\"status\":200}\n",
-  "stream": "stderr",
-  "time": "2021-03-08T01:42:14.087853233Z"
-}
-{
-  "log": "{\"level\":\"debug\",\"ts\":1615167734.5236733,\"logger\":\"http.handlers.reverse_proxy\",\"msg\":\"upstream roundtrip\",\"upstream\":\"kuard:8080\",\"request\":{\"remote_addr\":\"83.54.18.132:40018\",\"proto\":\"HTTP/2.0\",\"method\":\"GET\",\"host\":\"funny-panda.devopsplayground.org:9091\",\"uri\":\"/favicon.ico\",\"headers\":{\"Dnt\":[\"1\"],\"Sec-Fetch-Site\":[\"same-origin\"],\"Cookie\":[\"io=6hGzCUltLNnS-WsKAAAO\"],\"X-Forwarded-Proto\":[\"https\"],\"X-Forwarded-For\":[\"83.54.18.132\"],\"Cache-Control\":[\"no-cache\"],\"Sec-Ch-Ua\":[\"\\\"Google Chrome\\\";v=\\\"89\\\", \\\"Chromium\\\";v=\\\"89\\\", \\\";Not A Brand\\\";v=\\\"99\\\"\"],\"Sec-Ch-Ua-Mobile\":[\"?0\"],\"Sec-Fetch-Mode\":[\"no-cors\"],\"Accept-Encoding\":[\"gzip, deflate, br\"],\"Accept-Language\":[\"en-GB,en;q=0.9,ca;q=0.8,es;q=0.7,it;q=0.6\"],\"Sec-Fetch-Dest\":[\"image\"],\"Referer\":[\"https://funny-panda.devopsplayground.org:9091/\"],\"Pragma\":[\"no-cache\"],\"User-Agent\":[\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36\"],\"Accept\":[\"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8\"]},\"tls\":{\"resumed\":false,\"version\":772,\"cipher_suite\":4865,\"proto\":\"h2\",\"proto_mutual\":true,\"server_name\":\"funny-panda.devopsplayground.org\",\"client_common_name\":\"client-lab3\",\"client_serial\":\"1049107\"}},\"duration\":0.00058539,\"headers\":{\"Content-Length\":[\"19\"],\"Content-Type\":[\"text/plain; charset=utf-8\"],\"X-Content-Type-Options\":[\"nosniff\"],\"Date\":[\"Mon, 08 Mar 2021 01:42:14 GMT\"]},\"status\":404}\n",
-  "stream": "stderr",
-  "time": "2021-03-08T01:42:14.523801552Z"
-}
-```
+And finally, you should see in the `caddy4` logs the request, response and all activity over Kuard.
 
 
 ## References
