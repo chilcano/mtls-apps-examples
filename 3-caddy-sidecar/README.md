@@ -230,7 +230,8 @@ You should see the TLS handshake in the HTTP headers.
 
 #### 7. Call Kuard through Proxy from a browser.
 
-You will see the same error message you got when both containers are not part of the same Docker network.   
+You will see the same error message you got when both containers are not part of the same Docker network, but the source of error is other.
+
 ![](../img/mtls-3-caddy-4-kuard-caddy-err-ssl-protocol-error.png)
 
 And if you check the `caddy3` docker logs, you will see the error:   
@@ -245,7 +246,7 @@ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-j
   "time": "2021-03-07T22:20:07.523665941Z"
 }
 ```
-It means the Chrome can not load the page because the certificate that Caddy generated doesn't match the FQDN used to call the `kuard` service.
+It means the Browser can not load the page because the certificate that Caddy generated doesn't match the FQDN used to call the `kuard` service.
 Caddy embeds an [internal PKI only to generate internal certificates](https://github.com/smallstep/certificates) (i.e. certificate for `localhost`) and it can not establish TLS connection because that certificate was issued to `localhost`, not to your assigned FQDN (`<your-panda>.devopsplayground.org`).  
    
 Then, let's update `caddy3` and get a proper certificate for your assigned FQDN. 
@@ -269,12 +270,15 @@ reverse_proxy kuard:8080
 
 #### 2. Redeploy Caddy.
 
-Once updated, redeploy the `caddy3` container.
+Remove previous `caddy3` container.
 ```sh
 docker rm -f caddy3
+```
 
+Redeploy the `caddy3` container.
+```sh
 docker run -d -p 9090:9080 \
-    -v $PWD/1-basic/Caddyfile.example2:/etc/caddy/Caddyfile \
+    -v $PWD/1-basic/Caddyfile.example4:/etc/caddy/Caddyfile \
     -v $PWD/caddy_data:/data \
     -v $PWD/caddy_config:/config \
     --name caddy3 \

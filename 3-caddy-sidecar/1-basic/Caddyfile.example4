@@ -1,0 +1,8 @@
+{
+    debug
+}
+## add the fqdn of your assigned remote workstation
+funny-panda.devopsplayground.org:9080
+
+reverse_proxy kuard:8080
+
