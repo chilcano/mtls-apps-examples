@@ -14,20 +14,12 @@ Caddy as sidecar proxy for any kind of microservices to manage MTLS and Certific
 
 ## Preparation
 
-First of all, open __2 Browser tabs__, in first one open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in it go to the working directory for this example. 
-
-```sh
-cd $HOME/workdir/mtls-apps-examples/3-caddy-sidecar
-```
-
-In the 2nd Browser tab open [Code-Server](https://github.com/chilcano/mtls-apps-examples/).
-
-Also make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work.  
-You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
-
-
-> **Recommendation:**   
-> You can use the [Code-Server](https://github.com/chilcano/mtls-apps-examples/) that you opened in the 3rd Browser tab to edit files.
+1. First of all, open __2 Browser tabs__, in first one open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in it go to the working directory for this example. 
+   ```sh
+   cd $HOME/workdir/mtls-apps-examples/3-caddy-sidecar
+   ```
+2. In the 2nd Browser tab open [Code-Server](https://github.com/chilcano/mtls-apps-examples/). Also, you can use it as file editor, to upload and download files.
+3. Make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work. You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 
 
 #### Caddy and Docker useful commands
