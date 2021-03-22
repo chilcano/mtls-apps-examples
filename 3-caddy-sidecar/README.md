@@ -48,8 +48,25 @@ Caddy can be installed as a Linux service, the [binary can be downloaded](https:
 
 We are going to configure Caddy as a Proxy (no as `file_server`) to expose Kuard ([Demo application for "Kubernetes Up and Running"](https://github.com/kubernetes-up-and-running/kuard)).
 
+#### 1. Running Kuard
 
-#### 1. Set Caddy to run as reverse proxy.
+```sh
+docker run -d -p 9070:8080 \
+    --name kuard \
+    gcr.io/kuar-demo/kuard-amd64:1
+```
+
+Check if Kuard is running:
+```sh
+curl http://localhost:9070/healthy
+```
+
+And from your browser, you need to use your assigned FQDN (`http://<your-panda>.devopsplayground.org`), you should see this:
+
+![](../img/mtls-3-caddy-2-kuard.png)
+
+
+#### 2. Set Caddy to run as reverse proxy.
 
 ```sh
 cat 1-basic/Caddyfile.example2
@@ -61,7 +78,7 @@ localhost:9080
 reverse_proxy localhost:9070
 ```
 
-#### 2. Running Caddy as Proxy.
+#### 3. Running Caddy as Proxy.
 
 
 ```sh
@@ -78,7 +95,7 @@ Checking all Docker processes:
 docker ps -a
 ```
 
-#### 3. Calling Kuard through Proxy.
+#### 4. Calling Kuard through Proxy.
 
 From your Wetty terminal execute this:
 ```sh
@@ -119,7 +136,7 @@ __What is the problem?__
 * This error makes sense because Caddy and Kuard are running in the Docker Network, and hostnames like `127.0.0.1` and `localhost` are not the right IP addresses or Hostnames that docker instances have. This is the normal behaviour of running services in Docker containers, they sre running in an isolated manner. Then, to establish communication between 2 containers, we will need to do it through the Docker Network.
 
 
-#### 4. Creating a Docker Network and add both containers.
+#### 5. Creating a Docker Network and add both containers.
 
 We are going to create the `lab3-net` Docker Network and add `caddy3` and `kuard` containers.
 ```sh
@@ -149,7 +166,7 @@ PING kuard (172.19.0.3): 56 data bytes
 ``` 
 
 
-#### 5. Trying to call Kuard through Proxy.
+#### 6. Trying to call Kuard through Proxy.
 
 Now, we need to do make a slight change to Caddyfile.
 
@@ -206,7 +223,7 @@ curl -ivk https://localhost:9090/healthy
 You should see in the HTTP headers the TLS handshake.
 
 
-#### 6. Call Kuard through Proxy from a browser.
+#### 7. Call Kuard through Proxy from a browser.
 
 You will see the same error message you got when both containers are not part of the same Docker network.   
 ![](../img/mtls-3-caddy-4-kuard-caddy-err-ssl-protocol-error.png)
