@@ -45,8 +45,8 @@ build/
 4_client/
 
 ### sample 3
-caddy_config/*
-caddy_data/*
+#caddy_config/*
+#caddy_data/*
 
 ### sample 4
 */.step
