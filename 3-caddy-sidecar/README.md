@@ -125,7 +125,7 @@ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
 sudo tail -f  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq
 ```
 
-You should see below events:
+You should see the below events:
 ```sh
 [...]
 {
@@ -137,7 +137,7 @@ You should see below events:
 
 __What is the problem?__   
 * We are having `reverseproxy.statusError`, that means the Caddy container is working as proxy but it can not route the traffic to the Kuard container.
-* The Caddy container is trying to route the traffic from `localhost:9080` to `reverse_proxy localhost:9070`.
+* The Caddy container is trying to route the traffic from `<your-panda>.devopsplayground.org:9090` to `localhost:9080` and from `localhost:9080` to `localhost:9070`.
 * This error makes sense because Caddy and Kuard are running in the Docker Network, and hostnames like `127.0.0.1` and `localhost` are not the right IP addresses or Hostnames that docker instances have. This is the normal behaviour of running services in Docker containers, they sre running in an isolated manner. Then, to establish communication between 2 containers, we will need to do it through the Docker Network.
 
 
@@ -190,7 +190,7 @@ localhost:9080
 reverse_proxy kuard:8080
 ```
 
-With these changes, redeploy the `caddy3` container. Before, we have to remove it:
+Redeploy the `caddy3` with above updated Caddyfile. Before, we have to remove it:
 
 ```sh
 docker rm -f caddy3
@@ -225,7 +225,7 @@ Let's call to `kuard` container over HTTPS through Caddy Proxy but bypassing the
 curl -ivk https://localhost:9090/healthy
 ```
 
-You should see in the HTTP headers the TLS handshake.
+You should see the TLS handshake in the HTTP headers.
 
 
 #### 7. Call Kuard through Proxy from a browser.
