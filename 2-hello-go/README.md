@@ -116,7 +116,8 @@ go run -v hello.go -domain localhost
 
 In the 2nd Wetty terminal execute this:
 ```sh
-curl -i --cacert 2_intermediate/certs/ca-chain.cert.pem https://localhost:9443/
+curl -i --cacert 2_intermediate/certs/ca-chain.cert.pem \
+        https://localhost:9443/
 
 HTTP/2 200 
 content-type: text/plain
@@ -148,7 +149,9 @@ curl --cacert 2_intermediate/certs/ca-chain.cert.pem \
         --cert 4_client/certs/localhost.cert.pem \
         --key 4_client/private/localhost.key.pem \
         https://localhost:9443/
+```
 
+```sh
 Enter PEM pass phrase:
 
 Hello World 

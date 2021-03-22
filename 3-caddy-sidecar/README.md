@@ -101,7 +101,7 @@ Now, check if Kuard is running:
 curl http://localhost:9070/healthy
 ```
 
-And from your browser, you need to use your assigned FQDN (`http://<your-panda>.devopsplayground.org`) in your browser, you should see this:
+And from your browser, you need to use your assigned FQDN (`http://<your-panda>.devopsplayground.org:9070`) in your browser, you should see this:
 
 ![](../img/mtls-3-caddy-2-kuard.png)
 
@@ -144,7 +144,9 @@ docker ps -a
  From your 2nd Wetty terminal execute this:
 ```sh
 curl -ik https://localhost:9090/healthy
+```
 
+```sh
 HTTP/2 502 
 server: Caddy
 content-length: 0
@@ -210,7 +212,12 @@ PING kuard (172.19.0.3): 56 data bytes
 
 #### 6. Trying to call Kuard through Proxy.
 
-After creating a Docker network, we will need to do make a slight change to `1-basic/Caddyfile.example2`.
+Now, we need to do make a slight change to Caddyfile.
+
+```sh
+cat 1-basic/Caddyfile.example3
+```
+
 ```sh
 {
     debug
@@ -231,7 +238,7 @@ docker rm -f caddy3
 Now, run an updated Caddy instance:
 ```sh
 docker run -d -p 9090:9080 \
-    -v $PWD/1-basic/Caddyfile.example2:/etc/caddy/Caddyfile \
+    -v $PWD/1-basic/Caddyfile.example3:/etc/caddy/Caddyfile \
     -v $PWD/caddy_data:/data \
     -v $PWD/caddy_config:/config \
     --name caddy3 \
@@ -287,7 +294,7 @@ Then, let's update `caddy3` and get a proper certificate for your assigned FQDN.
 
 #### 1. Update Caddyfile to use the FQDN.
 
-Add a slight change to `1-basic/Caddyfile.example2`. Make sure you get the right FQDN, if not, it will fail. In my case, mine is `funny-panda.devopsplayground.org`.
+Add a slight change to Caddyfile`1-basic/Caddyfile.example4`. Make sure you get the right FQDN, if not, it will fail. In my case, mine is `funny-panda.devopsplayground.org`.
 
 ```sh
 {
