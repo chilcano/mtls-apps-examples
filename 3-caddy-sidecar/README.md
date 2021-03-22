@@ -207,7 +207,7 @@ docker run -d -p 9090:9080 \
     caddy
 ```
 
-You will note the above command will create `caddy3` container and will add it into the `lab3-net` docker network.  
+> You __will note__ the above command will create `caddy3` container and will add it into the `lab3-net` docker network.   
 
 Check the `caddy3` docker logs:   
 ```sh
@@ -268,7 +268,8 @@ funny-panda.devopsplayground.org:9080
 reverse_proxy kuard:8080
 ```
 
-#### 2. Redeploy Caddy.
+#### 2. Redeploy Kuard and Caddy
+
 
 Remove previous `caddy3` container.
 ```sh
@@ -285,6 +286,20 @@ docker run -d -p 9090:9080 \
     --net lab3-net \
     caddy
 ```
+
+Remove previous `kuard` container and redeploy it (optional).
+```sh
+docker rm -f kuard
+```
+
+Redeploy the `kuard` container.
+```sh
+docker run -d -p 9070:8080 \
+    --name kuard \
+    --net lab3-net \
+    gcr.io/kuar-demo/kuard-amd64:1
+```
+
 
 #### 3. Check the Caddy logs.
 
