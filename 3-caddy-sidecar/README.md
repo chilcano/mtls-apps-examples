@@ -61,7 +61,7 @@ Check if Kuard is running:
 curl http://localhost:9070/healthy
 ```
 
-And from your browser, you need to use your assigned FQDN (`http://<your-panda>.devopsplayground.org`), you should see this:
+And from your browser, you need to use your assigned FQDN (`http://<your-panda>.devopsplayground.org:9070`), you should see this:
 
 ![](../img/mtls-3-caddy-2-kuard.png)
 
@@ -109,11 +109,16 @@ content-length: 0
 date: Sun, 07 Mar 2021 16:45:15 GMT
 ```
 
-From your local computer using a browser call to Kuard:  
+From a browser open this URL `http://<your-panda>.devopsplayground.org:9090` to call to Kuard:  
 
 ![](../img/mtls-3-caddy-3-kuard-caddy-proxy.png)
 
-In the Wetty terminal in your remote workstation get the caddy logs to check what is happening:
+Seems that Caddy is exposing Kuard over HTTPS, then switch to HTTPS using this URL `https://<your-panda>.devopsplayground.org:9070`. You should see this:
+
+![](../img/mtls-3-caddy-4-kuard-caddy-err-ssl-protocol-error.png)
+
+
+Let's check the logs. In the Wetty terminal get the caddy logs to check what is happening:
 
 ```sh
 CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
