@@ -14,13 +14,13 @@ Caddy as sidecar proxy for any kind of microservices to manage MTLS and Certific
 
 ## Preparation
 
-First of all, open 3 Browser tabs, in 2 of them open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in both go to the working directory for this example. 
+First of all, open __2 Browser tabs__, in first one open a [Wetty Terminal](https://github.com/chilcano/mtls-apps-examples/) and in it go to the working directory for this example. 
 
 ```sh
 cd $HOME/workdir/mtls-apps-examples/3-caddy-sidecar
 ```
 
-In the 3rd Browser tab open the [Code-Server](https://github.com/chilcano/mtls-apps-examples/).
+In the 2nd Browser tab open [Code-Server](https://github.com/chilcano/mtls-apps-examples/).
 
 Also make sure the owner of all files and directories under `workdir` is `$USER`, if the owner is `root` the labs will not work.  
 You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
@@ -30,35 +30,23 @@ You can set up a owner using this command: `sudo chown -R $USER $HOME/workdir/`
 > You can use the [Code-Server](https://github.com/chilcano/mtls-apps-examples/) that you opened in the 3rd Browser tab to edit files.
 
 
-#### Caddy and Docker
+#### Caddy and Docker useful commands
+
 
 Caddy can be installed as a Linux service, the [binary can be downloaded](https://caddyserver.com/download) and embedded in applications or use it in a [Docker Container](https://hub.docker.com/_/caddy). This latest option is the way we are going to use along this Lab.
 
 
-**Once installed Docker we are ready to download Caddy Docker image.**
-```sh
-docker pull caddy
-```
+| Docker commands                                   | Description     
+|---                                                | ---
+| docker pull caddy                                 | Download/install Caddy Docker image
+| docker images                                     | Checking the downloaded Caddy docker image
+| docker exec -it caddy2 ls -la /config/caddy/      | * `/config/caddy/` - It is the directory where the Caddy configuration is saved.
+| docker exec -it caddy2 ls -la /data/caddy/        | * `/data/caddy/` - It is the directory where the Caddy data (certificates, CA, etc.) is saved.
+| docker exec -it caddy2 ls -la /usr/share/caddy/   | * `/usr/share/caddy/` - It is the directory where the static web page is saved. 
+| docker ps                                         | Checking the running Caddy docker instances  
+| docker rm -f caddy1 caddy2                        | Remove recently created container instances
+|                                                   |
 
-**Checking the downloaded Caddy docker image.**
-```sh
-docker images
-```
-
-**Exploring Caddy docker process.**  
-```sh
-docker exec -it caddy2 ls -la /config/caddy/
-
-docker exec -it caddy2 ls -la /data/caddy/
-
-docker exec -it caddy2 ls -la /usr/share/caddy/
-```
-
-* `/config/caddy/` - It is the directory where the Caddy configuration is saved.
-* `/data/caddy/` - It is the directory where the Caddy data (certificates, CA, etc.) is saved.
-* `/usr/share/caddy/` - It is the directory where the static web page is saved.
-
-All above directories can be mounted.  
 
 **Caddy logs.**   
 Caddy can [generate formated logs](https://caddyserver.com/docs/caddyfile/directives/log), but in this lab the Docker' stdout is enough:
@@ -72,41 +60,14 @@ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy2)
 sudo tail -f  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq '.'
 ```
 
-**Checking the running Caddy docker instances.**
-```sh
-docker ps
-```
+## Scenarios - steps
 
-**Remove recently created container instances.**
-```sh
-docker rm -f caddy1 caddy2
-```
+### I. Caddy as HTTP Proxy or Sidecar Proxy (without TLS).
 
-## Steps
-
-### I. Caddy as HTTP Proxy or Sidecar Proxy.
-
-We are going to configure Caddy as a Proxy (no as `file_server`) listening on `9080` to expose Kuard ([Demo application for "Kubernetes Up and Running"](https://github.com/kubernetes-up-and-running/kuard)) running `9070` port.
-
-#### 1. Running Kuard as Webapp
-
-```sh
-docker run -d -p 9070:8080 \
-    --name kuard \
-    gcr.io/kuar-demo/kuard-amd64:1
-```
-
-Now, check if Kuard is running:
-```sh
-curl http://localhost:9070/healthy
-```
-
-And from your browser, you need to use your assigned FQDN (`http://<your-panda>.devopsplayground.org:9070`) in your browser, you should see this:
-
-![](../img/mtls-3-caddy-2-kuard.png)
+We are going to configure Caddy as a Proxy (no as `file_server`) to expose Kuard ([Demo application for "Kubernetes Up and Running"](https://github.com/kubernetes-up-and-running/kuard)).
 
 
-#### 2. Update Caddyfile to run Caddy as reverse proxy
+#### 1. Set Caddy to run as reverse proxy.
 
 ```sh
 cat 1-basic/Caddyfile.example2
@@ -118,12 +79,8 @@ localhost:9080
 reverse_proxy localhost:9070
 ```
 
-#### 3. Running Caddy as Proxy
+#### 2. Running Caddy as Proxy.
 
-Create these directories.
-```sh
-mkdir caddy_data caddy_config
-```
 
 ```sh
 docker run -d -p 9090:9080 \
@@ -139,9 +96,9 @@ Checking all Docker processes:
 docker ps -a
 ```
 
-#### 4. Calling Kuard through Proxy.
+#### 3. Calling Kuard through Proxy.
 
- From your 2nd Wetty terminal execute this:
+From your Wetty terminal execute this:
 ```sh
 curl -ik https://localhost:9090/healthy
 ```
@@ -153,11 +110,11 @@ content-length: 0
 date: Sun, 07 Mar 2021 16:45:15 GMT
 ```
 
-From your local computer using a browser:  
+From your local computer using a browser call to Kuard:  
 
 ![](../img/mtls-3-caddy-3-kuard-caddy-proxy.png)
 
-Open other Wetty terminal in your remote workstation and tail the caddy logs to check what is happening:
+In the Wetty terminal in your remote workstation get the caddy logs to check what is happening:
 
 ```sh
 CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
@@ -180,7 +137,7 @@ __What is the problem?__
 * This error makes sense because Caddy and Kuard are running in the Docker Network, and hostnames like `127.0.0.1` and `localhost` are not the right IP addresses or Hostnames that docker instances have. This is the normal behaviour of running services in Docker containers, they sre running in an isolated manner. Then, to establish communication between 2 containers, we will need to do it through the Docker Network.
 
 
-#### 5. Creating a Docker Network and add both containers.
+#### 4. Creating a Docker Network and add both containers.
 
 We are going to create the `lab3-net` Docker Network and add `caddy3` and `kuard` containers.
 ```sh
@@ -210,7 +167,7 @@ PING kuard (172.19.0.3): 56 data bytes
 ``` 
 
 
-#### 6. Trying to call Kuard through Proxy.
+#### 5. Trying to call Kuard through Proxy.
 
 Now, we need to do make a slight change to Caddyfile.
 
@@ -267,7 +224,7 @@ curl -ivk https://localhost:9090/healthy
 You should see in the HTTP headers the TLS handshake.
 
 
-#### 7. Call Kuard through Proxy from a browser.
+#### 6. Call Kuard through Proxy from a browser.
 
 You will see the same error message you got when both containers are not part of the same Docker network.   
 ![](../img/mtls-3-caddy-4-kuard-caddy-err-ssl-protocol-error.png)
@@ -300,7 +257,7 @@ Add a slight change to Caddyfile`1-basic/Caddyfile.example4`. Make sure you get 
 {
     debug
 }
-## replace localhost for the fqdn
+## add the fqdn of your assigned remote workstation
 funny-panda.devopsplayground.org:9080
 
 reverse_proxy kuard:8080
@@ -364,75 +321,20 @@ And finally, call the service from Chrome using the FQDN:
 
 ![](../img/mtls-3-caddy-5-kuard-caddy-proxy-fqdn-ok.png)
 
-You will see the `caddy3` is running with the IP `172.19.0.2` and `kuard` with the IP `172.19.0.3`. You can check it with this command:
+You will see the `caddy3` and `kuard` are running with private IP addresses such as `172.19.0.2` and `172.19.0.3`. You can check it with this command:
 
 ```sh
 docker network ls
-
-NETWORK ID     NAME             DRIVER    SCOPE
-a6d11919ae92   bridge           bridge    local
-ca5966db93ae   host             host      local
-d4dc72571f42   lab3-net         bridge    local
-b564bb82a281   none             null      local
-b52f92249fab   playground-net   bridge    local
 ```
 
 ```sh
 docker network inspect lab3-net | jq
 ```
 
-```sh
-[
-  {
-    "Name": "lab3-net",
-    "Id": "d4dc72571f42b9352fbf9161026071613e55b171e8f267341fc5966f8758ab78",
-    "Created": "2021-03-07T18:53:25.85471742Z",
-    "Scope": "local",
-    "Driver": "bridge",
-    "EnableIPv6": false,
-    "IPAM": {
-      "Driver": "default",
-      "Options": {},
-      "Config": [
-        {
-          "Subnet": "172.19.0.0/16",
-          "Gateway": "172.19.0.1"
-        }
-      ]
-    },
-    "Internal": false,
-    "Attachable": false,
-    "Ingress": false,
-    "ConfigFrom": {
-      "Network": ""
-    },
-    "ConfigOnly": false,
-    "Containers": {
-      "8b28b69d43e9de7601a1dc54329bc483e7d83bedbc7daf61205829a328563143": {
-        "Name": "kuard",
-        "EndpointID": "8e8cc31f37978bf26e099aa1eeabf2ad830e2e50e7d7b26272adbdd7bb839f97",
-        "MacAddress": "02:42:ac:13:00:03",
-        "IPv4Address": "172.19.0.3/16",
-        "IPv6Address": ""
-      },
-      "da9ebfad457e735443db184df79b577f94109d12fa764232fede2a17f6d1c981": {
-        "Name": "caddy3",
-        "EndpointID": "378c937c6064b48c72bd7de4a67cab95482aee696f025d2a7beb19ad8945c24d",
-        "MacAddress": "02:42:ac:13:00:02",
-        "IPv4Address": "172.19.0.2/16",
-        "IPv6Address": ""
-      }
-    },
-    "Options": {},
-    "Labels": {}
-  }
-]
-```
-
 
 ### III. Enabling Two-way TLS (Mutual TLS authentication).
 
-MTLS requires:
+MTLS requires:   
 - a client certificate (and key-pair) and be installed in the Client (Chrome or any browser) certificate store
 - enable the Caddy TLS policy to require present a valid client certificate during the TLS handshake
 - set the certificate chain (CA Root and Intermediate that issued the client certificate) in caddy to allow (Client Authentication) the client to establish secure communication.
@@ -463,14 +365,14 @@ cp 2_intermediate/certs/intermediate.cert.pem ../3-caddy-sidecar/caddy_config/cu
 ```
 
 
-#### 2. Update Caddyfile
+#### 2. Update Caddyfile.
 
 Now, let's update the Caddyfile with the right TLS policy. 
 
 ```sh
 cd ../3-caddy-sidecar/
 
-nano 1-basic/Caddyfile.mtls
+cat 1-basic/Caddyfile.mtls
 ```
 
 > **Important:**   
@@ -496,7 +398,7 @@ nano 1-basic/Caddyfile.mtls
 ```
 
 
-#### 3. Create a new Caddy docker instance
+#### 3. Create a new Caddy docker instance.
 
 ```sh
 docker rm -f caddy4
@@ -511,8 +413,7 @@ docker run -d -p 9091:9081 \
 ```
 
 
-#### 4. Call the service and check MTLS
-
+#### 4. Call the service and check MTLS.
 
 From Wetty using curl:
 ```sh
@@ -522,11 +423,9 @@ curl --cacert caddy_data/caddy/certificates/acme-v02.api.letsencrypt.org-directo
        --cert ../2-hello-go/4_client/certs/client-lab3.cert.pem:secret \
        --key ../2-hello-go/4_client/private/client-lab3.key.pem \
        https://${FQDN}:9091/healthy
-
 ```
 
-
-If you call Kuard through Caddy Proxy using a Browser you will get the next error. That is because your browser doesn't have the client certificate (and encrypted private key) and its corresponding certificate chain.
+If you call Kuard through Caddy Proxy using a Browser you will get the below error. That is because your browser doesn't have the client certificate (and encrypted private key) and its corresponding certificate chain.
 
 ![](../img/mtls-3-caddy-6-kuard-caddy-mtls-error.png)
 
