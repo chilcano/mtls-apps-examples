@@ -38,7 +38,7 @@ Caddy can be installed as a Linux service, the [binary can be downloaded](https:
 | docker ps                                         | Checking the running Caddy docker instances  
 | docker rm -f caddy1 caddy2                        | Remove recently created container instances
 | docker logs -f caddy2                             | Caddy can [generate formated logs](https://caddyserver.com/docs/caddyfile/directives/log), but in this lab the Docker' stdout is enough 
-| CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy2)  </br> sudo tail -f  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq '.' | Tailing the log file that is stored in the Docker engine directory
+| CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy2)  </br> sudo tail -f  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log \| jq '.' | Tailing the log file that is stored in the Docker engine directory
     
    
 
