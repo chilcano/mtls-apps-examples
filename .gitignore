@@ -47,6 +47,7 @@ build/
 ### sample 3
 #caddy_config/*
 #caddy_data/*
+test.txt
 
 ### sample 4
 */.step
