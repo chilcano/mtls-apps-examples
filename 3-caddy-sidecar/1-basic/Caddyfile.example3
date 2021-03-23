@@ -4,6 +4,6 @@
 localhost:9080
 
 ## kuard is the docker name
-## 8080 is the standard port that kuard use (it isn't a docker port)
+## 8080 is the standard port that kuard uses (it isn't a docker port)
 reverse_proxy kuard:8080
 

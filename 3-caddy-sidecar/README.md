@@ -66,8 +66,9 @@ And from your browser, you need to use your assigned FQDN (`http://<your-panda>.
 ![](../img/mtls-3-caddy-2-kuard.png)
 
 
-#### 2. Set Caddy to run as reverse proxy.
+#### 2. Setting Caddy as reverse proxy.
 
+We are going to use this configuration (`Caddyfile.example2`):
 ```sh
 cat 1-basic/Caddyfile.example2
 ```
@@ -78,8 +79,7 @@ localhost:9080
 reverse_proxy localhost:9070
 ```
 
-#### 3. Running Caddy as Proxy.
-
+#### 3. Running Caddy as reverse proxy.
 
 ```sh
 docker run -d -p 9090:9080 \
@@ -95,9 +95,16 @@ Checking all Docker processes:
 docker ps -a
 ```
 
+Or displays only specified columns:
+```sh
+docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}"
+
+```
+
+
 #### 4. Calling Kuard through Proxy.
 
-From your Wetty terminal execute this:
+Caddy by default enable TLS. Then, from your Wetty terminal execute next command to call Kuard on `https://localhost:9090` :
 ```sh
 curl -ik https://localhost:9090/healthy
 ```
@@ -109,11 +116,7 @@ content-length: 0
 date: Sun, 07 Mar 2021 16:45:15 GMT
 ```
 
-From a browser open this URL `http://<your-panda>.devopsplayground.org:9090` to call to Kuard:  
-
-![](../img/mtls-3-caddy-3-kuard-caddy-proxy.png)
-
-Seems that Caddy is exposing Kuard over HTTPS, then switch to HTTPS using this URL `https://<your-panda>.devopsplayground.org:9070`. You should see this:
+Since that Caddy is exposing Kuard over HTTPS, we are going to use this URL `https://<your-panda>.devopsplayground.org:9070`. You should see this:
 
 ![](../img/mtls-3-caddy-4-kuard-caddy-err-ssl-protocol-error.png)
 
@@ -186,7 +189,7 @@ cat 1-basic/Caddyfile.example3
 localhost:9080
 
 ## kuard is the docker name
-## 8080 is the standard port that kuard use (it isn't a docker port)
+## 8080 is the standard port that kuard uses (it isn't a docker port)
 reverse_proxy kuard:8080
 ```
 
@@ -225,7 +228,7 @@ Let's call to `kuard` container over HTTPS through Caddy Proxy but bypassing the
 curl -ivk https://localhost:9090/healthy
 ```
 
-You should see the TLS handshake in the HTTP headers.
+You should see a successful response (`HTTP/2 200`) and the TLS handshake in the HTTP headers.
 
 
 #### 7. Call Kuard through Proxy from a browser.
@@ -235,6 +238,11 @@ You will see the same error message you got when both containers are not part of
 ![](../img/mtls-3-caddy-4-kuard-caddy-err-ssl-protocol-error.png)
 
 And if you check the `caddy3` docker logs, you will see the error:   
+
+```sh
+CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
+```
+
 ```sh
 sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq 
 ```
@@ -257,6 +265,11 @@ Then, let's update `caddy3` and get a proper certificate for your assigned FQDN.
 #### 1. Update Caddyfile to use the FQDN.
 
 Add a slight change to Caddyfile`1-basic/Caddyfile.example4`. Make sure you get the right FQDN, if not, it will fail. In my case, mine is `funny-panda.devopsplayground.org`.
+
+
+```sh
+cat 1-basic/Caddyfile.example4
+```
 
 ```sh
 {
@@ -287,22 +300,9 @@ docker run -d -p 9090:9080 \
     caddy
 ```
 
-Remove previous `kuard` container and redeploy it (optional).
-```sh
-docker rm -f kuard
-```
-
-Redeploy the `kuard` container.
-```sh
-docker run -d -p 9070:8080 \
-    --name kuard \
-    --net lab3-net \
-    gcr.io/kuar-demo/kuard-amd64:1
-```
-
-
 #### 3. Check the Caddy logs.
 
+Check the Caddy logs using other Wetty terminal.
 ```sh
 CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
 ```
@@ -311,7 +311,7 @@ CONTAINER_ID=$(docker inspect --format="{{.Id}}" caddy3)
 sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log | jq 
 ```
 
-You should see this:
+You should see that Caddy has requested and got a certificate for your assigned FQDN (`<your-panda>.devopsplayground.org`):
 ```sh
 [...]
 {
@@ -340,19 +340,10 @@ curl https://funny-panda.devopsplayground.org:9090/healthy
 ok
 ```
 
-And finally, call the service from Chrome using the FQDN:   
+And finally, call the service from your Browser using the FQDN:   
 
 ![](../img/mtls-3-caddy-5-kuard-caddy-proxy-fqdn-ok.png)
 
-You will see the `caddy3` and `kuard` are running with private IP addresses such as `172.19.0.2` and `172.19.0.3`. You can check it with this command:
-
-```sh
-docker network ls
-```
-
-```sh
-docker network inspect lab3-net | jq
-```
 
 
 ### III. Enabling Two-way TLS (Mutual TLS authentication).
@@ -423,9 +414,8 @@ cat 1-basic/Caddyfile.mtls
 
 #### 3. Create a new Caddy docker instance.
 
+We are going to create a new Caddy instance listening on `9091` port.
 ```sh
-docker rm -f caddy4
-
 docker run -d -p 9091:9081 \
     -v $PWD/1-basic/Caddyfile.mtls:/etc/caddy/Caddyfile \
     -v $PWD/caddy_data:/data \
@@ -435,6 +425,18 @@ docker run -d -p 9091:9081 \
     caddy
 ```
 
+Check the Caddy instances running:
+
+```sh
+$ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}"                                                                                   
+
+CONTAINER ID   NAMES         PORTS
+873b8d599534   caddy4        80/tcp, 443/tcp, 2019/tcp, 0.0.0.0:9091->9081/tcp
+9ab22ccf0658   caddy3        80/tcp, 443/tcp, 2019/tcp, 0.0.0.0:9090->9080/tcp
+97d676383330   kuard         0.0.0.0:9070->8080/tcp
+7c2a9123793a   code-server   0.0.0.0:8000->8080/tcp
+0cf6a764b28e   wetty         0.0.0.0:80->3000/tcp
+```
 
 #### 4. Call the service and check MTLS.
 
