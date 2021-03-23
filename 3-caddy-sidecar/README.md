@@ -210,7 +210,7 @@ docker run -d -p 9090:9080 \
     caddy
 ```
 
-> You __will note__ the above command will create `caddy3` container and will add it into the `lab3-net` docker network.   
+> __Note__ that the above command will create `caddy3` container and will add it into the `lab3-net` docker network.   
 
 Check the `caddy3` docker logs:   
 ```sh
@@ -291,7 +291,7 @@ docker rm -f caddy3
 
 Redeploy the `caddy3` container.
 ```sh
-docker run -d -p 9090:9080 \
+docker run -d -p 9090:9080 -p 443:443 \
     -v $PWD/1-basic/Caddyfile.example4:/etc/caddy/Caddyfile \
     -v $PWD/caddy_data:/data \
     -v $PWD/caddy_config:/config \
@@ -299,6 +299,9 @@ docker run -d -p 9090:9080 \
     --net lab3-net \
     caddy
 ```
+
+> __Note__ that `443` port is being used for the new `caddy3` docker instance (`-p 443:443`). That port is required for Caddy in order to get a certificate issued by Let's Encrypt or ZeroSSL through ACME protocol. The ACME protocol uses the port `80` and/or `443` ports.
+
 
 #### 3. Check the Caddy logs.
 
@@ -428,11 +431,13 @@ docker run -d -p 9091:9081 \
 Check the Caddy instances running:
 
 ```sh
-$ docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}"                                                                                   
+docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}"                                                                                   
+```
 
+```sh
 CONTAINER ID   NAMES         PORTS
-873b8d599534   caddy4        80/tcp, 443/tcp, 2019/tcp, 0.0.0.0:9091->9081/tcp
-9ab22ccf0658   caddy3        80/tcp, 443/tcp, 2019/tcp, 0.0.0.0:9090->9080/tcp
+CONTAINER ID   NAMES         PORTS
+3cddf2fdcd6b   caddy4        80/tcp, 2019/tcp, 0.0.0.0:443->443/tcp, 0.0.0.0:9091->9081/tcp
 97d676383330   kuard         0.0.0.0:9070->8080/tcp
 7c2a9123793a   code-server   0.0.0.0:8000->8080/tcp
 0cf6a764b28e   wetty         0.0.0.0:80->3000/tcp
@@ -440,14 +445,29 @@ CONTAINER ID   NAMES         PORTS
 
 #### 4. Call the service and check MTLS.
 
-From Wetty using curl:
+Before calling to Kuard through MTLS, curl will need to get read-only access to Kuard certificate and Root CA certificate, in order to get that, we need to grant access to curl to read these certificates. We can do it executing below command:
+
+```sh
+sudo chown -R $USER caddy_data/
+```
+
+Now, from Wetty using curl call to Kuard using this URL `https://${FQDN}:9091/`:
 ```sh
 FQDN="funny-panda.devopsplayground.org"
 
-curl --cacert caddy_data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${FQDN}/${FQDN}.crt \
+curl -i --cacert caddy_data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${FQDN}/${FQDN}.crt \
        --cert ../2-hello-go/4_client/certs/client-lab3.cert.pem:secret \
        --key ../2-hello-go/4_client/private/client-lab3.key.pem \
        https://${FQDN}:9091/healthy
+
+
+HTTP/2 200 
+content-type: text/plain
+date: Tue, 23 Mar 2021 16:57:11 GMT
+server: Caddy
+content-length: 2
+
+ok
 ```
 
 If you call Kuard through Caddy Proxy using a Browser you will get the below error. That is because your browser doesn't have the client certificate (and encrypted private key) and its corresponding certificate chain.
@@ -455,13 +475,14 @@ If you call Kuard through Caddy Proxy using a Browser you will get the below err
 ![](../img/mtls-3-caddy-6-kuard-caddy-mtls-error.png)
 
 
-Checking errors:   
+You can check the errors printing the logs:   
 ```sh
 CONTAINER_ID4=$(docker inspect --format="{{.Id}}" caddy4)
 
 sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID4}/${CONTAINER_ID4}-json.log | jq 
 ```
 
+You should see these logs:
 ```sh
 [...]
 {
@@ -486,12 +507,12 @@ sudo tail -fn 1000  /var/lib/docker/containers/${CONTAINER_ID4}/${CONTAINER_ID4}
 }
 ```
 
-Then, to avoid above errors let's install the client certificate in Browser's certificate store. 
+Then, to avoid above errors let's install the client certificate in Browser's certificate store (use Code-Server: `http://<your-panda>.devopsplayground.org:8000/`). 
 
 ![](../img/mtls-3-caddy-7-download-client-pfx.png)
 
 
-Once certificate installed, open from your Browser the Kuard URL. Immediately after the server (Caddy), will ask you to select the client certificate to establish a secure communication:
+Once the certificate has been installed, open from your Browser with the Kuard URL (`https://<your-panda>.devopsplayground.org:9091/`). Immediately after the server (Caddy), will ask you to select the client certificate to establish a secure communication:
 
 ![](../img/mtls-3-caddy-8-chrome-select-client-pfx.png)
 
